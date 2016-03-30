@@ -1,0 +1,8 @@
+List of features pending 
+
+-Create a batch of test cases to use with the program.  Something like a series of
+numbers with its factors like 4=[2,2] 18=[2,2,3].  The I need an option in the program to
+run the test cases and compare its the results with the ones saved
+
+-Add a final check to the program, multiplying the resulting factors must yield the
+original number.
