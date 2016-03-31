@@ -128,7 +128,21 @@ Pruebas
 Vamos a ver hasta donde podemos llegar con esta versión del programa, probaremos a
 factorizar números cada vez más grandes y veremos cuanto tarda el programa en obtener sus
 factores.  
-Definiremos dos parametros importantes:
+Definiremos varios parametros importantes:
 -El tamaño del número a factorizar.- Para cuantificar el número a factorizar
-consideraremos solo el número de cifras que lo componen y no el número concreto.
--El tiempo que tarde en ser factorizado.-
+consideraremos solo el número de cifras que lo componen y no el número concreto. El
+número de cifras determinará el nivel que hemos batido con nuestro programa.
+
+-El tiempo que tarde en ser factorizado.- La calidad de nuestro programa se mide por dos
+factores principales: que sea capaz de factorizar el número correctamente y que lo haga
+dentro de un tiempo razonable, definiremos un tiempo máximo para factorizar un número de
+una hora, y veremos hasta que nivel llegamos con este tiempo. 
+Al definir un tiempo máximo necesitamos un mecanismo que nos permita medir el tiempo que
+tarda el programa y otro que nos permita detener el programa y que este muestre por donde
+iba cuando se detuvo: los factores encontrados y hasta qué candidato ha probado.
+
+-El tipo de número a factorizar.- Intentaremos factorizar varios tipos de números: al
+menos un número compuesto de más de dos factores; al menos un número compuesto por dos
+factores de tamaño similar (en cifras); al menos un número primo.  Cada uno de estos
+números tardará un tiempo distinto en ser factorizado, siendo el número primo el que más
+tarde con diferencia.

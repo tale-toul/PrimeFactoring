@@ -5,13 +5,12 @@ like 45834473 takes more than 14 seconds
 '''
 #Test number 7102454841, takes about 1minute and 21 seconds
 
-#Version 1.0.2
+#Version 1.0.3
 
 import sys
 import time
+import argparse
 
-#Number to factor
-num=0;
 #List of factors
 factors=[]
 
@@ -31,6 +30,7 @@ def validate_factors(num,factors):
 
 #Parameters: num.- An integer to factorize
 #Return value.- the list of factors
+#The core functionality of program, finds the prime factors of compnum
 def factorize(compnum):
     candidate=2 #Candidate to be a factor of num
     pfactors=[] #List of found factors of number
@@ -43,24 +43,26 @@ def factorize(compnum):
             candidate +=1
     return pfactors #In the end at least pfactors contains compnum
 
+#Parameters: none
+#Return value: the arguments found in the command line
+#Parses the command line arguments
+def parse_arguments():
+    parser=argparse.ArgumentParser(description="Find the prime factors of an integer number")
+    parser.add_argument("num", help="Integer number to factor", type=int)
+    parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
+    return(parser.parse_args())
+
 
 #####MAIN#######
 
-if(len(sys.argv)>1):
-    try:
-        num=int(sys.argv[1])
-    except:
-        print "Could not convert",sys.argv[1], "into an integer"
-        print "Usage:",sys.argv[0], "<positive integer>"
-        exit(-1)
-    t_start=time.time()
-    factors=factorize(num)
-    t_end=time.time()
-    if validate_factors(int(sys.argv[1]),factors):
-        print "Factors of",sys.argv[1],"=",factors,"In",t_end-t_start,"seconds"
-        exit(0)
-    else:
-        print "The result is wrong, multiplying",factors,"doesn't yield",sys.argv[1]
-        exit(-2)
+arguments=parse_arguments()
+t_start=time.time()
+factors=factorize(arguments.num)
+t_end=time.time()
+if validate_factors(arguments.num,factors):
+    print "Factors of",sys.argv[1],"=",factors,
+    if arguments.verbose: print "In",t_end-t_start,"seconds"
+    exit(0)
 else:
-    print "Usage:",sys.argv[0], "<positive integer>"
+    print "The result is wrong, multiplying",factors,"doesn't yield",arguments.num
+    exit(-1)
