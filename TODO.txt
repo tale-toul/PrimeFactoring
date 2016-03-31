@@ -11,18 +11,28 @@ the factorization are added to the dictionary after checking that the value is
 not there yet,  and then saved to the file, if it doesn't exist (dictionary and
 file) it is created
 
--Add an argument parser so the behaviour of the script can be changed.  For
-this I will use the argparse standard python module (https://docs.python.org/2/howto/argparse.html).
 
--Add an argument to tell the script that we want to save the result of
-factoring the number to a file, the argument will have a parameter that is the
-filename, if the file doesn't exist we create it.
+-Add the functionality that when the program is stoped with CTRL-C the program dumps the
+factors found so far, the last candidate tried, and the time spent so far.
 
--Move the core functionality of computing the factors into a function
-
--Add the posibility to compute the time needed to factorize a number
 
 DONE
 
 -Add a final check to the program, multiplying the resulting factors must yield the
 original number. (Done in version 1.0.1)
+
+-Move the core functionality of computing the factors into a function. (Done in version
+1.0.2)
+
+-Add the posibility to compute the time needed to factorize a number. (Done in version
+1.0.2)
+
+-Add an argument parser so the behaviour of the script can be changed.  For
+this I will use the argparse standard python module
+(https://docs.python.org/2/howto/argparse.html). (Done in version 1.0.3)
+
+-Add an argument to tell the script that we want to save the result of
+factoring the number to a file, the argument will have a parameter that is the
+filename, if the file doesn't exist we create it. (Done in version 1.0.3)
+
+
