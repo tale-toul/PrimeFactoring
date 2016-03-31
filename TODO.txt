@@ -1,8 +1,28 @@
 List of features pending 
 
--Create a batch of test cases to use with the program.  Something like a series of
-numbers with its factors like 4=[2,2] 18=[2,2,3].  The I need an option in the program to
-run the test cases and compare its the results with the ones saved
+-Create a batch of test cases to use with the program.  Something like a series
+of numbers with its factors like 4=[2,2] 18=[2,2,3].  The I need an option in
+the program to run the test cases and compare its the results with the ones
+saved.  
+To generate the test cases the program is run with an option that tells it to
+save the result in a file.  If the file already exists it's read into a string
+and then loaded with json, the result should be a dictionary.  The results of
+the factorization are added to the dictionary after checking that the value is
+not there yet,  and then saved to the file, if it doesn't exist (dictionary and
+file) it is created
+
+-Add an argument parser so the behaviour of the script can be changed.  For
+this I will use the argparse standard python module (https://docs.python.org/2/howto/argparse.html).
+
+-Add an argument to tell the script that we want to save the result of
+factoring the number to a file, the argument will have a parameter that is the
+filename, if the file doesn't exist we create it.
+
+-Move the core functionality of computing the factors into a function
+
+-Add the posibility to compute the time needed to factorize a number
+
+DONE
 
 -Add a final check to the program, multiplying the resulting factors must yield the
-original number.
+original number. (Done in version 1.0.1)

@@ -84,7 +84,7 @@ Veamos otro ejemplo: 88 => 88/2 = 44 => 44/2=22 => 22/2=11 ...=> 11/8=1.375 (se 
 …=> 11/11=1 (fin)
 
 
-VERSION 1.0.0
+VERSION 1.0
 
 La factorización de un número es un buen ejemplo de tarea adecuada para realizar con un
 programa (software), es repetitiva e implica operaciones matemáticas, que son realizadas
@@ -106,3 +106,29 @@ se vuelve a probar el mismo candidato a factor sobre el nuevo número.
 y se vuelve a entrar en el bucle.
 -El bucle se repite hasta que el candidato a factor sea mayor que el número a factorizar.
 
+
+Validación de resultados
+
+Vamos a añadir algunos métodos para validar los resultados obtenidos por nuestro
+programa.
+En primer lugar usaremos una función para comprobar que los resultados obtenidos son
+correctos.  Esta función es facil de implementar, se le pasa el número que hemos
+factorizado y los factores que hemos encontrados; multiplicamos los factores entre sí y
+debemos obtener el número a factorizar.  No vamos a comprobar si los factores son números
+primos.
+
+Un segundo método de validación consiste en tener una batería de pruebas conocida, un
+conjunto de números primos con sus factores ya calculados, ejecutar el programa de tal
+manera que lea la lista de números de la batería de pruebas y compare los resultados
+obtenidos con los resultados de la batería.  Este método está pendiente de programar.
+
+
+Pruebas
+
+Vamos a ver hasta donde podemos llegar con esta versión del programa, probaremos a
+factorizar números cada vez más grandes y veremos cuanto tarda el programa en obtener sus
+factores.  
+Definiremos dos parametros importantes:
+-El tamaño del número a factorizar.- Para cuantificar el número a factorizar
+consideraremos solo el número de cifras que lo componen y no el número concreto.
+-El tiempo que tarde en ser factorizado.-
