@@ -5,7 +5,7 @@ like 45834473 takes more than 14 seconds
 '''
 #Test number 7102454841, takes about 1minute and 21 seconds
 
-#Version 1.0.5
+#Version 1.0.6
 
 import sys
 import time
@@ -99,7 +99,11 @@ def run_test_cases(batch_file):
 #####MAIN#######
 
 arguments=parse_arguments()
-if arguments.addtest: test_cases=read_test_cases(arguments.addtest) #Load or create a dictionary of test cases
+if arguments.addtest:#If we are adding a new test case 
+    test_cases=read_test_cases(arguments.addtest) #Load or create a dictionary of test cases
+    if str(arguments.num) in test_cases: #If the test case already exists, say so and exit
+        print "Test case",arguments.num,"already present:",arguments.num,"=",test_cases[str(arguments.num)]
+        exit(2)
 elif arguments.runtest: 
     run_test_cases(arguments.runtest)
     exit(1) #If we are running test the program ends here
@@ -110,7 +114,7 @@ t_end=time.time()
 if validate_factors(arguments.num,factors):
     print "Factors of",arguments.num,"=",factors,
     if arguments.verbose: print "In",t_end-t_start,"seconds"
-    if arguments.addtest and arguments.num not in test_cases:#Save the test case if requested and it has not been saved before
+    if arguments.addtest:#Save the test case if requested and it has not been saved before
         test_cases[arguments.num]=factors
         try:
             f_out=open(arguments.addtest,"w")

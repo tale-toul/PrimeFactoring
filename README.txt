@@ -146,3 +146,72 @@ menos un número compuesto de más de dos factores; al menos un número compuest
 factores de tamaño similar (en cifras); al menos un número primo.  Cada uno de estos
 números tardará un tiempo distinto en ser factorizado, siendo el número primo el que más
 tarde con diferencia.
+
+Pruebas de la versión 1.0
+
+-Nivel 1 
+ En este nivel los números compuestos y los primos serán de una sola cifra, por no ser
+ posible reducir el número de cifras en menos que uno.
+ 1-Número compuesto múltiple.- Solo existe un caso que podemos usar para un número
+ compuesto por más de dos números primos, este es el 8=[2,2,2]
+    8 = [2, 2, 2] In 6.91413879395e-06 seconds
+ 2-Número compuesto por dos primos.- Usaremos el 9=[3,3]
+    9 = [3, 3] In 7.86781311035e-06 seconds
+ 3-Número primo.- 7=[7]
+    7 = [7] In 5.96046447754e-06 seconds
+ 4-Adicionalmente guardaremos como casos de prueba todos los números interesantes de una
+ cifra, desde el 1 al 9
+
+ Nivel batido. Los tiempos de factorización son del orden de microsegundos. 
+
+
+-Nivel 2
+ 1-Número compuesto múltiple
+    30 = [2, 3, 5] In 6.91413879395e-06 seconds
+ 2-Número compuesto por dos primos
+    14 = [2, 7] In 6.91413879395e-06 seconds
+ 3-Número primo
+    17 = [17] In 1.00135803223e-05 seconds
+ 
+ Nivel batido. Los tiempos siguen siendo ridiculos
+
+-Nivel 3
+ 1-Número compuesto múltiple
+    172 = [2, 2, 43] In 1.31130218506e-05 seconds
+ 2-Número compuesto por dos primos
+    187 = [11, 17] In 8.10623168945e-06 seconds
+ 3-Número primo
+    487 = [487] In 8.89301300049e-05 seconds
+
+ Nivel batido. Los tiempos de factorización suben timidamente.
+
+-Nivel 4
+ 1-Número compuesto múltiple
+    4823 = [7, 13, 53] In 1.50203704834e-05 seconds
+ 2-Número compuesto por dos primos
+    6523 = [11, 593] In 0.000117063522339 seconds
+ 3-Número primo
+    4871 = [4871] In 0.00084400177002 seconds
+
+ Nivel batido. 
+
+-Nivel 5
+ 1-Número compuesto múltiple
+    16523 = [13, 31, 41] In 1.28746032715e-05 seconds
+ 2-Número compuesto por dos primos
+    26233 = [37, 709] In 0.000125169754028 seconds
+ 3-Número primo
+    27253 = [27253] In 0.00460600852966 seconds
+ 
+ Nivel batido
+
+-Nivel 6
+ 1-Número compuesto múltiple
+ 2-Número compuesto por dos primos
+ 3-Número primo
+
+
+
+ 1-Número compuesto múltiple
+ 2-Número compuesto por dos primos
+ 3-Número primo
