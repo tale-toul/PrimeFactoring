@@ -129,6 +129,9 @@ Pruebas
 Vamos a ver hasta donde podemos llegar con esta versión del programa, probaremos a
 factorizar números cada vez más grandes y veremos cuanto tarda el programa en obtener sus
 factores.  
+Nos interesan dos aspectos principales en el proceso: Obtener un resultado correcto al
+factorizar el número; que el tiempo de resolución del problema (factorizar) sea razonable.
+
 Definiremos varios parametros importantes:
 -El tamaño del número a factorizar.- Para cuantificar el número a factorizar
 consideraremos solo el número de cifras que lo componen y no el número concreto. El
@@ -140,10 +143,98 @@ dentro de un tiempo razonable, definiremos un tiempo máximo para factorizar un 
 una hora, y veremos hasta que nivel llegamos con este tiempo. 
 Al definir un tiempo máximo necesitamos un mecanismo que nos permita medir el tiempo que
 tarda el programa y otro que nos permita detener el programa y que este muestre por donde
-iba cuando se detuvo: los factores encontrados y hasta qué candidato ha probado.
+iba cuando se detuvo: los factores encontrados y hasta qué candidato ha
+probado.  Para poder comparar el tiempo que tarda nuestro programa en resolver
+cada factorización definiremos un hardware standard, este será un Raspberry Pi.
 
 -El tipo de número a factorizar.- Intentaremos factorizar varios tipos de números: al
 menos un número compuesto de más de dos factores; al menos un número compuesto por dos
 factores de tamaño similar (en cifras); al menos un número primo.  Cada uno de estos
 números tardará un tiempo distinto en ser factorizado, siendo el número primo el que más
 tarde con diferencia.
+
+Pruebas de la versión 1.0
+Para estas pruebas usaremos como plataforma hardware un Raspberry Pi modelo B
+revisión 1, con sistema operativo raspbian jessie
+
+-Nivel 1 
+ En este nivel los números compuestos y los primos serán de una sola cifra, por no ser
+ posible reducir el número de cifras en menos que uno.
+ 
+ 1-Número compuesto múltiple.- Solo existe un caso que podemos usar para un número
+ compuesto por más de dos números primos, este es el 8=[2,2,2]
+    8 = [2, 2, 2] In 0.000190019607544 seconds
+ 2-Número compuesto por dos primos.- Usaremos el 9=[3,3]
+    9 = [3, 3] In 0.000190019607544 seconds
+ 3-Número primo.- 7=[7]
+    7 = [7] In 0.000192880630493 seconds
+ 4-Adicionalmente guardaremos como casos de prueba todos los números interesantes de una
+ cifra, desde el 1 al 9
+
+ Nivel batido. Los tiempos de factorización son del orden de microsegundos. 
+
+
+-Nivel 2
+ 1-Número compuesto múltiple
+    30 = [2, 3, 5] In 0.000200986862183 seconds
+ 2-Número compuesto por dos primos
+    14 = [2, 7] In 0.000207901000977 seconds
+ 3-Número primo
+    17 = [17] In 0.000205993652344 seconds
+ 
+ Nivel batido. Los tiempos siguen siendo ridiculos
+
+-Nivel 3
+ 1-Número compuesto múltiple
+    172 = [2, 2, 43] In 0.000254154205322 seconds
+ 2-Número compuesto por dos primos
+    187 = [11, 17] In 0.000391006469727 seconds
+ 3-Número primo
+    487 = [487] In 0.00111198425293 seconds
+    683 = [683] In 0.00135493278503 seconds
+
+ Nivel batido. Los tiempos de factorización suben al orden de los milisegundos.
+
+-Nivel 4
+ 1-Número compuesto múltiple
+    4823 = [7, 13, 53] In 0.000292778015137 seconds
+ 2-Número compuesto por dos primos
+    6523 = [11, 593] In 0.00151515007019 seconds
+ 3-Número primo
+    4871 = [4871] In 0.008544921875 seconds
+
+ Nivel batido. 
+
+-Nivel 5
+ 1-Número compuesto múltiple
+    16523 = [13, 31, 41] In 0.000253915786743 seconds
+ 2-Número compuesto por dos primos
+    26233 = [37, 709] In 0.00139808654785 seconds
+ 3-Número primo
+    27253 = [27253] In 0.0481271743774 seconds
+    68171 = [68171] In 0.118710041046 seconds
+ 
+ Nivel batido. El número del apartado dos, que tomaremos como referencia está todavía en
+ el orden de los milisegundos.
+
+-Nivel 6
+ 1-Número compuesto múltiple
+    372531 = [3, 23, 5399] In 0.00950002670288 seconds
+ 2-Número compuesto por dos primos
+    332621 = [487, 683] In 0.00151205062866 seconds
+ 3-Número primo
+    375643 = [375643] In 0.667051076889 seconds
+
+Nivel batido. Seguimos en milisegundos para el número (2) pero estamos en más de medio
+segundo para el número primo.
+
+-Nivel 7
+ 1-Número compuesto múltiple
+ 2-Número compuesto por dos primos
+ 3-Número primo
+
+
+
+ 1-Número compuesto múltiple
+ 2-Número compuesto por dos primos
+ 3-Número primo
