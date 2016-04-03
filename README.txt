@@ -202,6 +202,7 @@ revisión 1, con sistema operativo raspbian jessie
     6523 = [11, 593] In 0.00151515007019 seconds
  3-Número primo
     4871 = [4871] In 0.008544921875 seconds
+    5441 = [5441] In 0.00976800918579 seconds
 
  Nivel batido. 
 
@@ -230,9 +231,42 @@ segundo para el número primo.
 
 -Nivel 7
  1-Número compuesto múltiple
+    5577944 = [2, 2, 2, 19, 36697] In 0.064346075058 seconds
  2-Número compuesto por dos primos
+    2713147 = [557, 4871] In 0.00906491279602 seconds
  3-Número primo
+    5587943 = [5587943] In 9.97602105141 seconds
 
+Nivel batido. Para los números (1) y (2) los tiempos siguen siendo bajas (centesimas y
+milesimas de segundo, pero para el número (3) el tiempo a subido a casi 10 segundos, lo
+que supone multiplicar por más de 10 el tiempo del número (3) del nivel 6.
+
+-Nivel 8
+ 1-Número compuesto múltiple
+    12773543 = [29, 151, 2917] In 0.00515103340149 seconds
+ 2-Número compuesto por dos primos
+    26503111 = [4871, 5441] In 0.0102159976959 seconds
+ 3-Número primo
+    12763547 = [12763547] In 22.8130741119 seconds
+
+Nivel batido. 
+
+-Nivel 9
+
+ 1-Número compuesto múltiple
+    455133121 = [139, 1237, 2647] In 0.00713801383972 seconds
+    370918413 = [3, 3, 3, 71, 181, 1069] In 0.00222587585449 seconds
+ 2-Número compuesto por dos primos
+    370918411 = [5441, 68171] In 0.154046058655 seconds
+ 3-Número primo
+    370918423 = [370918423] In 662.737498045 seconds 
+
+Nive batido. Esta vez el caso (3) ha tardado algo más de 11 minutos, lo cual es un tiempo
+considerable, pararemos las pruebas en este nivel y buscaremos alguna mejora en el
+programa que reduzca el tiempo de cálculo.
+
+
+    
 
 
  1-Número compuesto múltiple

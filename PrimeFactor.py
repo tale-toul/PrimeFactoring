@@ -5,7 +5,7 @@ like 45834473 takes more than 14 seconds
 '''
 #Test number 7102454841, takes about 1minute and 21 seconds
 
-#Version 1.0.7
+#Version 1.0.8
 
 import sys
 import time
@@ -49,7 +49,7 @@ def factorize(compnum):
         print "Program interrupted by user"
         print "Factors found so far:",pfactors
         print "Last candidate:",candidate
-        exit(3)
+        raise
 
 #Parameters: none
 #Return value: the arguments found in the command line
@@ -94,9 +94,9 @@ def run_test_cases(batch_file):
             t_start=time.time()
             factors=factorize(int(case))
             t_end=time.time()
-            if factors == test_cases[case] and arguments.verbose: print factors, "Passed in",t_end-t_start,"seconds"
+            if factors == test_cases[case] and arguments.verbose: print factors, "Passed in",round(t_end-t_start,4),"seconds"
             elif factors != test_cases[case]:
-                print "FAILED test:", case,test_cases[case],"!=",case,factors,"time",t_end-t_start,"seconds"
+                print "FAILED test:", case,test_cases[case],"!=",case,factors,"time",round(t_end-t_start,4),"seconds"
     else: print "Empty test case batch"
 
 
@@ -114,12 +114,18 @@ elif arguments.runtest: #If running the test cases
     run_test_cases(arguments.runtest)
     exit(1) #If we are running test the program ends here
 #Not running test, so we continue 
+
 t_start=time.time()
-factors=factorize(arguments.num)
+try:
+    factors=factorize(arguments.num)
+except KeyboardInterrupt:
+    t_end=time.time()
+    print "Time used",round(t_end-t_start,4),"seconds"
+    exit(3)
 t_end=time.time()
 if validate_factors(arguments.num,factors):
     print "Factors of",arguments.num,"=",factors,
-    if arguments.verbose: print "In",t_end-t_start,"seconds"
+    if arguments.verbose: print "In",round(t_end-t_start,4),"seconds"
     if arguments.addtest:#Save the test case if requested and it has not been saved before
         test_cases[arguments.num]=factors
         try:
