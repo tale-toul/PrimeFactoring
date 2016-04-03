@@ -1,5 +1,6 @@
 ﻿FACTORIZACION DE NUMEROS PRIMOS
 
+Author: tale.toul@gmail.com
 
 INTRODUCCION
 
@@ -10,7 +11,7 @@ positivo, aunque es posible factorizar números negativos no los vamos a tener e
 y lo vamos a descomponer en una serie números primos que al ser multiplicados entre sí
 nos darán el número original.  
 
-A = b * c * d * …. Siendo b,c,d números primos
+A = b * c * d * .... Siendo b,c,d números primos
 
 Si el número a factorizar no se puede descomponer quiere decir que es primo. Por si
 alguien está despistado un número primo es aquel que solo es divisible por el mismo y por
