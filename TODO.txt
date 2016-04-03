@@ -5,6 +5,10 @@ factors found so far, the last candidate tried, and the time spent so far.
 
 -Reduce the number of decimals when showing the time it takes to compute the factors
 
+-When running the test cases they should be process in numeric order from small to big.
+
+-Create a version using a database instead of json to store the test cases.
+
 
 DONE
 

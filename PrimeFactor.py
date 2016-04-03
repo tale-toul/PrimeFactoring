@@ -5,7 +5,7 @@ like 45834473 takes more than 14 seconds
 '''
 #Test number 7102454841, takes about 1minute and 21 seconds
 
-#Version 1.0.6
+#Version 1.0.7
 
 import sys
 import time
@@ -37,13 +37,19 @@ def factorize(compnum):
     candidate=2 #Candidate to be a factor of num
     pfactors=[] #List of found factors of number
 
-    while(candidate <= compnum):
-        if(compnum%candidate == 0):
-            pfactors.append(candidate)
-            compnum /= candidate
-        else:
-            candidate +=1
-    return pfactors #In the end at least pfactors contains compnum
+    try:
+        while(candidate <= compnum):
+            if(compnum%candidate == 0):
+                pfactors.append(candidate)
+                compnum /= candidate
+            else:
+                candidate +=1
+        return pfactors #In the end at least pfactors contains compnum
+    except KeyboardInterrupt:
+        print "Program interrupted by user"
+        print "Factors found so far:",pfactors
+        print "Last candidate:",candidate
+        exit(3)
 
 #Parameters: none
 #Return value: the arguments found in the command line
@@ -104,7 +110,7 @@ if arguments.addtest:#If we are adding a new test case
     if str(arguments.num) in test_cases: #If the test case already exists, say so and exit
         print "Test case",arguments.num,"already present:",arguments.num,"=",test_cases[str(arguments.num)]
         exit(2)
-elif arguments.runtest: 
+elif arguments.runtest: #If running the test cases
     run_test_cases(arguments.runtest)
     exit(1) #If we are running test the program ends here
 #Not running test, so we continue 
