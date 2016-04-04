@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 1.0.9
+#Version 1.1.0
 
 import sys
 import time
@@ -33,12 +33,18 @@ def factorize(compnum):
     pfactors=[] #List of found factors of number
 
     try:
-        while(candidate <= compnum):
+        while candidate == 2: #Consider 2 as a special case
             if(compnum%candidate == 0):
                 pfactors.append(candidate)
                 compnum /= candidate
             else:
-                candidate +=1
+                candidate += 1 #Now candidate equals 3
+        while candidate <= compnum: 
+            if(compnum%candidate == 0):
+                pfactors.append(candidate)
+                compnum /= candidate
+            else:
+                candidate += 2 #Only check for odd numbers, even numbers cannot be primes
         return pfactors #In the end at least pfactors contains compnum
     except KeyboardInterrupt:
         print "Program interrupted by user"

@@ -267,7 +267,84 @@ programa que reduzca el tiempo de cálculo.
 
 
     
+VERSION 1.1
 
+En la versión 1.0 fuimos capaces de llegar al nivel 9, sin embargo el tiempo necesario
+para determinar que un número es primo en este nivel se multiplico por más de 10 con
+respecto al nivel 8. Necesitamos modificar el programa para hacer que el algoritmo de
+factorización sea más eficiente.
+
+ELIMINACION DE NUMEROS PARES
+
+La mejora que vamos a introducir en esta versión es la eliminación de los números pares en
+los chequeos de los candidatos; por definición sabemos que un número par es siempre
+divisible por 2, y por lo tanto no puede ser un número primo.
+El funcionamiento del algoritmo de factorización empezará probando el número 2, que es el
+primer número par y por lo tanto sí puede ser primo.  El número compuesto se prueba a
+dividir por 2, si es divisible se volverá a probar a dividior por 2, así tantas veces como
+el numero resultante de la división siga siendo divisible por 2, por ejemplo 8 será
+probado tres veces a divir por 2.
+Cuando el número resultante de la división ya no sea divisible por 2, aumentamos en uno el
+candidato, pasando al 3, y probamos a dividir de nuevo, cuando el número a factorizar no
+sea divisible por 3, no pasamos al siguiente sino que saltamos al 5, sumando 2 al
+candidato anterior, y así a partir de ese momento, se sumará dos a candidato anterior
+pasando siempre al siguiente número impar.
+Con esta mejora conseguimos reducir el número de comprobaciones de divisibilidad a la
+mitad y por lo tanto debe suponer un aumento considerable en la velocidad del programa.
+
+
+Pruebas de la versión 1.1
+
+En esta versión vamos a empezar con el nivel 6, ya que los anterirores ya se resolvian muy
+rápido en la versión 1.0
+
+-Nivel 5
+ 1-Número compuesto múltiple
+    66753 = [3, 3, 7417] In 0.0067 seconds
+ 2-Número compuesto por dos primos
+    26233 = [37, 709] In 0.0008 seconds
+ 3-Número primo
+    36523 = [36523] In 0.0328 seconds
+    76753 = [76753] In 0.0673 seconds
+
+Nivel batido.  Como se esperaba los tiempos son mejores.
+
+-Nivel 6
+ 1-Número compuesto múltiple
+    372531 = [3, 23, 5399] In 0.006 seconds
+    658724 = [2, 2, 11, 11, 1361] In 0.0016 seconds
+ 2-Número compuesto por dos primos
+    332621 = [487, 683] In 0.0009 seconds
+ 3-Número primo
+    375643 = [375643] In 0.3989 seconds
+    651727 = [651727] In 0.6983 seconds
+
+Nivel batido.
+
+-Nivel 7
+ 1-Número compuesto múltiple
+    5577944 = [2, 2, 2, 19, 36697] In 0.0483 seconds
+ 2-Número compuesto por dos primos
+    2713147 = [557, 4871] In 0.0068 seconds
+    4789649 = [2053, 2333] In 0.0026 seconds
+ 3-Número primo
+    5587943 = [5587943] In 5.9718 seconds
+    4789637 = [4789637] In 4.1817 seconds
+
+Nivel batido.
+ 
+-Nivel 8
+ 1-Número compuesto múltiple
+    12773543 = [29, 151, 2917] In 0.004 seconds
+ 2-Número compuesto por dos primos
+    26503111 = [4871, 5441] In 0.0061 seconds
+ 3-Número primo
+    12763547 = [12763547] In 11.1387 seconds
+    32763557 = [32763557] In 34.7135 seconds
+
+Nivel batido.  En la "factorización" del número primo es donde se ve claramente que el
+tiempo requerido se ha reducido a la mitad, ya que ahora solo probamos la mitad de los
+posibles candidatos.
 
  1-Número compuesto múltiple
  2-Número compuesto por dos primos
