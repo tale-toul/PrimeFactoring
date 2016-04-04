@@ -1,11 +1,6 @@
 #!/usr/bin/env python
-'''This is version 1.0.0 of the factorization of integer numbers.
-It is simple but very inneficient, the factorization of a prime number 
-like 45834473 takes more than 14 seconds
-'''
-#Test number 7102454841, takes about 1minute and 21 seconds
 
-#Version 1.0.8
+#Version 1.0.9
 
 import sys
 import time
@@ -88,13 +83,15 @@ def read_test_cases(file):
 def run_test_cases(batch_file):
     test_cases=read_test_cases(batch_file) #Load or create a dictionary of test cases
     if len(test_cases) >0: #There are tests to be run
+        Ky=test_cases.keys() #Get a list with the keys (numbers) in the dictionary
+        Ky.sort(key=int) #sort the list numerically
         if arguments.verbose: print "Running",len(test_cases),"test cases"
-        for case in test_cases: #case is a string
-            if arguments.verbose: print case,
+        for case in Ky: #case is a string
+            if arguments.verbose: print case
             t_start=time.time()
             factors=factorize(int(case))
             t_end=time.time()
-            if factors == test_cases[case] and arguments.verbose: print factors, "Passed in",round(t_end-t_start,4),"seconds"
+            if factors == test_cases[case] and arguments.verbose: print "\t",factors, "Passed in",round(t_end-t_start,4),"seconds"
             elif factors != test_cases[case]:
                 print "FAILED test:", case,test_cases[case],"!=",case,factors,"time",round(t_end-t_start,4),"seconds"
     else: print "Empty test case batch"
