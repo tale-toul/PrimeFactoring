@@ -346,6 +346,29 @@ Nivel batido.  En la "factorización" del número primo es donde se ve clarament
 tiempo requerido se ha reducido a la mitad, ya que ahora solo probamos la mitad de los
 posibles candidatos.
 
+-Nivel 9
+
+ 1-Número compuesto múltiple
+    455133121 = [139, 1237, 2647] In 0.0025 seconds
+    370918413 = [3, 3, 3, 71, 181, 1069] In 0.0013 seconds
+
+ 2-Número compuesto por dos primos
+    370918411 = [5441, 68171] In 0.0606 seconds
+
+ 3-Número primo
+    370918423 = [370918423] In 324.2495 seconds
+
+Nivel batido.  En el cálculo del número primo es donde vemos la gran mejora de esta
+version, el timpo se ha reducido a la mitad del que se necesito en la version 1.0.  
+
+
+INCREMENTO EN LA COMPLEJIDAD DEL PROBLEMA EN CADA NIVEL
+
+Es importante la comparación entre el 
+
+
+
+
  1-Número compuesto múltiple
  2-Número compuesto por dos primos
  3-Número primo
