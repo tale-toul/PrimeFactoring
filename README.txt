@@ -153,6 +153,21 @@ factores de tamaño similar (en cifras); al menos un número primo.  Cada uno de
 números tardará un tiempo distinto en ser factorizado, siendo el número primo el que más
 tarde con diferencia.
 
+
+
+Generacion automática de casos de prueba
+
+Para generar casos de prueba sin necesidad de introducirlos uno a uno voy a usar la
+siguiente orden en una consola:
+
+ # for x in {1..500}; do ./PrimeFactor.py --addtest testcases.dat -v $(python -c "import random;print random.randint(1000000,9999999)"); done
+
+Esta orden esta compuesta por un bucle que se ejecutará 500 veces, dentro del bucle se
+ejecuta el programa de factorización, y el número a factorizar es generado por un trozo de
+código python.
+
+
+
 Pruebas de la versión 1.0
 Para estas pruebas usaremos como plataforma hardware un Raspberry Pi modelo B
 revisión 1, con sistema operativo raspbian jessie
@@ -360,6 +375,7 @@ posibles candidatos.
 
 Nivel batido.  En el cálculo del número primo es donde vemos la gran mejora de esta
 version, el timpo se ha reducido a la mitad del que se necesito en la version 1.0.  
+
 
 
 INCREMENTO EN LA COMPLEJIDAD DEL PROBLEMA EN CADA NIVEL

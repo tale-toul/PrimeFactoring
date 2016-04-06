@@ -100,6 +100,7 @@ def run_test_cases(batch_file):
             if factors == test_cases[case] and arguments.verbose: print "\t",factors, "Passed in",round(t_end-t_start,4),"seconds"
             elif factors != test_cases[case]:
                 print "FAILED test:", case,test_cases[case],"!=",case,factors,"time",round(t_end-t_start,4),"seconds"
+                raw_input("Press any key to continue")
     else: print "Empty test case batch"
 
 
