@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 
-#Version 1.1.0
+#Version 1.1.1
 
 import sys
 import time
 import argparse
 import os.path
 import json
+import signal
+#import pdb
 
-#List of factors
-factors=[]
+#This are now global variables so the signal handler can see them
+candidate=2 #Candidate to be a factor of num
+factors=[] #List of found factors of number
 
 #Parameters: num.- An integer 
 #            factors.- A list of integers
@@ -26,29 +29,30 @@ def validate_factors(num,factors):
         return False
 
 #Parameters: num.- An integer to factorize
-#Return value.- the list of factors
+#Return value.- Nothing is returned
 #The core functionality of program, finds the prime factors of compnum
 def factorize(compnum):
-    candidate=2 #Candidate to be a factor of num
-    pfactors=[] #List of found factors of number
-
+    #Tell the interpreter these are global, not local variables
+    global candidate
+    global factors
+    candidate=2
+    factors=[]
     try:
         while candidate == 2: #Consider 2 as a special case
             if(compnum%candidate == 0):
-                pfactors.append(candidate)
+                factors.append(candidate)
                 compnum /= candidate
             else:
                 candidate += 1 #Now candidate equals 3
         while candidate <= compnum: 
             if(compnum%candidate == 0):
-                pfactors.append(candidate)
+                factors.append(candidate)
                 compnum /= candidate
             else:
                 candidate += 2 #Only check for odd numbers, even numbers cannot be primes
-        return pfactors #In the end at least pfactors contains compnum
     except KeyboardInterrupt:
         print "Program interrupted by user"
-        print "Factors found so far:",pfactors
+        print "Factors found so far:",factors
         print "Last candidate:",candidate
         raise
 
@@ -91,11 +95,10 @@ def run_test_cases(batch_file):
     if len(test_cases) >0: #There are tests to be run
         Ky=test_cases.keys() #Get a list with the keys (numbers) in the dictionary
         Ky.sort(key=int) #sort the list numerically
-        if arguments.verbose: print "Running",len(test_cases),"test cases"
         for case in Ky: #case is a string
             if arguments.verbose: print case
             t_start=time.time()
-            factors=factorize(int(case))
+            factorize(int(case))
             t_end=time.time()
             if factors == test_cases[case] and arguments.verbose: print "\t",factors, "Passed in",round(t_end-t_start,4),"seconds"
             elif factors != test_cases[case]:
@@ -103,10 +106,24 @@ def run_test_cases(batch_file):
                 raw_input("Press any key to continue")
     else: print "Empty test case batch"
 
-
+#Parameters: signum.- The signal number used with this function
+#           stack.- The current stack frame 
+#Return value.- Nothing is returned
+#This function is called automatically when the captured signal is received.  After the
+#execution of this function the program should continue running where it was before the
+#signal was catched.
+#We never call this function, it is called by the signal handler
+def signal_show_current_status(signum,stack):
+   print "Received signal",signum
+   print "\tFactors found so far:",factors
+   print "\tLast candidate:",candidate
+   t_so_far=time.time()
+   print "\tTime used:", round(t_so_far-t_start,3),"seconds"
 
 
 #####MAIN#######
+
+#pdb.set_trace()
 
 arguments=parse_arguments()
 if arguments.addtest:#If we are adding a new test case 
@@ -117,11 +134,14 @@ if arguments.addtest:#If we are adding a new test case
 elif arguments.runtest: #If running the test cases
     run_test_cases(arguments.runtest)
     exit(1) #If we are running test the program ends here
+
 #Not running test, so we continue 
 
+#Sets the handler for the signal SIGUSR1
+signal.signal(signal.SIGUSR1,signal_show_current_status) 
 t_start=time.time()
 try:
-    factors=factorize(arguments.num)
+    factorize(arguments.num)
 except KeyboardInterrupt:
     t_end=time.time()
     print "Time used",round(t_end-t_start,4),"seconds"

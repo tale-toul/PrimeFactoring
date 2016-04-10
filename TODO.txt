@@ -3,8 +3,6 @@ List of features pending
 
 -Create a version using a database instead of json to store the test cases.
 
--Show the running time, factors so far, last candidate tried, but don't stop the program,
-when receiving a signal of some type. 
 
 -User gmpy2 (gnu multiprecition number)
 
@@ -48,3 +46,6 @@ factors found so far, the last candidate tried. (Done in version 1.0.7)
 -Show the running time when the program is interrupted from the keyboard. (Done in version 1.0.8)
 
 -When running the test cases they should be process in numeric order from small to big. (Done in version 1.0.9)
+
+-Show the running time, factors so far, last candidate tried, but don't stop the program,
+when receiving a signal of some type. (Done in version 1.1.1)
