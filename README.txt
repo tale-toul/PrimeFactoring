@@ -164,7 +164,8 @@ siguiente orden en una consola:
 
 Esta orden esta compuesta por un bucle que se ejecutará 500 veces, dentro del bucle se
 ejecuta el programa de factorización, y el número a factorizar es generado por un trozo de
-código python.
+código python, que genera un número aleatorio dentro del rango que se le indica.
+
 
 
 
@@ -356,6 +357,7 @@ Nivel batido.
  3-Número primo
     12763547 = [12763547] In 11.1387 seconds
     32763557 = [32763557] In 34.7135 seconds
+    52763197 = [52763197] In 45.9598 seconds
 
 Nivel batido.  En la "factorización" del número primo es donde se ve claramente que el
 tiempo requerido se ha reducido a la mitad, ya que ahora solo probamos la mitad de los
@@ -371,16 +373,69 @@ posibles candidatos.
     370918411 = [5441, 68171] In 0.0606 seconds
 
  3-Número primo
-    370918423 = [370918423] In 324.2495 seconds
+    370918423 = [370918423] In 324.2495 seconds (más de 5 minutos)
+    469241039 = [469241039] In 410.9201 seconds
+    540918487 = [540918487] In 573.4807 seconds 
 
 Nivel batido.  En el cálculo del número primo es donde vemos la gran mejora de esta
 version, el timpo se ha reducido a la mitad del que se necesito en la version 1.0.  
 
+-Nivel 10
+ 1-Número compuesto múltiple
+    1569874542 = [2, 3, 47, 1063, 5237] In 0.005 seconds
+    6569874545 = [5, 13, 83, 1217771] In 5.4298 second
+    6569374545 = [3, 3, 5, 19, 7683479] In 29.44 seconds.- El caso de este número es
+    intereante, si factorizamos el último primo (7683479) solo necesita unos 7 segundos,
+    pero el número completo tarda 4 veces más, no se a qué se debe esto ya que los
+    primeros factores se encuentran rápido y entonces nos queda el último factor, que
+    ahora tarda mucho más. 
+    
+ 2-Número compuesto por dos primos
+ 3-Número primo
+    1569874541 = [1569874541] In 1367.8559 seconds (más de 22 minutos)
+    3569874547 = [3569874547L] In 12343.9727 seconds (más de 3 horas y media)
+
+Nivel NO batido.  Este nivel de momento nos bate a nosotros.
 
 
-INCREMENTO EN LA COMPLEJIDAD DEL PROBLEMA EN CADA NIVEL
 
-Es importante la comparación entre el 
+INCREMENTO EN LA COMPLEJIDAD DEL PROBLEMA 
+
+En cada nivel que hemos ido abordando, el tiempo necesario para completar la factorización
+de un número crece, como era de esperar.  Este crecimiento sin embargo es muy distinto
+según el tipo de número que estemos factorizando, si el número es compuesto los tiempos no
+han crecido mucho a lo largo de los diferentes niveles, hasta llegar la nivel 10 donde se
+observa un fenómeno extraño: un número compuesto tarda mucho más en factorizarse que la
+suma de las factorizaciones de sus primos.
+
+Donde sí vemos diferencias importantes es a la hora de "factorizar" números primos, en
+cada nivel se observa un incremento en el tiempo de aproximadamente de 10 veces con
+respecto al tiempo que se necesito en el nivel anterior.  Esto se debe a que el conjunto
+números posibles a factorizar se multiplica por 10 cada vez que añadimos una cifra a los
+números (subimos un nivel).  
+
+Por ejemplo, si estamos factorizando números de 3 cifras, el conjunto total es de 999
+(1 a 999), si ahora añadimos una cifra y factorizamos números de 4 cifras, el conjunto
+total es de 9999 (1 a 9999) diez veces más.  
+
+A todos los efectos esto quiere decir que la complejidad media del problema tiene un
+crecimiento exponencial, multiplicandose por 10 por cada cifra que añadimos al número a
+factorizar.  
+
+Es por este incremento exponencial que, como dijimos al principio, el problema no tiene
+solución dentro de un tiempo razonable.  Es posible mejorar el rendimiento del programa,
+pero por mucho que lo mejoremos no seremos capaces de mantener un ritmo de mejora
+equiparable al aumento de la complejidad del problema.
+
+Es interesante darse cuenta que, cuando subimos un nivel de dificultad aumentando una cifra
+al número a factorizar, el conjunto de números del anterior nivel que hemos conseguido superar, solo
+supone el 10% del conjunto total de los posibles números a factorizar en este nivela.
+Visto de otro modo, si descartamos todos los números de los anteriores niveles ya
+superados, aun tenemos el 90% del problema sin resolver.
+
+Aun con esta nueva visión derrotista de nuestro problema, veremos que podemos aplicar
+técnicas que mejoraran mucho el rendimiento del programa, permitiendonos llegar a niveles
+superiores.
 
 
 

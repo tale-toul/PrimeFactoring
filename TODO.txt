@@ -3,8 +3,10 @@ List of features pending
 
 -Create a version using a database instead of json to store the test cases.
 
--Show the running time, factor so far, last candidate tried, but don't stop the program,
+-Show the running time, factors so far, last candidate tried, but don't stop the program,
 when receiving a signal of some type. 
+
+-User gmpy2 (gnu multiprecition number)
 
 
 DONE
