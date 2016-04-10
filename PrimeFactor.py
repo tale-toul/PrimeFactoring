@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 1.1.2
+#Version 1.1.3
 
 import sys
 import time
@@ -8,10 +8,9 @@ import argparse
 import os.path
 import json
 import signal
+import inspect
 #import pdb
 
-#This are now global variables so the signal handler can see them
-candidate=2 #Candidate to be a factor of num
 factors=[] #List of found factors of number
 
 #Parameters: num.- An integer 
@@ -29,30 +28,28 @@ def validate_factors(num,factors):
         return False
 
 #Parameters: num.- An integer to factorize
-#Return value.- Nothing is returned
+#Return value.- the list of factors
 #The core functionality of program, finds the prime factors of compnum
 def factorize(compnum):
-    #Tell the interpreter these are global, not local variables
-    global candidate
-    global factors
-    candidate=2
-    factors=[]
+    candidate=2 #Candidate to be a factor of num
+    pfactors=[] #List of found factors of number
     try:
         while candidate == 2: #Consider 2 as a special case
             if(compnum%candidate == 0):
-                factors.append(candidate)
+                pfactors.append(candidate)
                 compnum /= candidate
             else:
                 candidate += 1 #Now candidate equals 3
         while candidate <= compnum: 
             if(compnum%candidate == 0):
-                factors.append(candidate)
+                pfactors.append(candidate)
                 compnum /= candidate
             else:
                 candidate += 2 #Only check for odd numbers, even numbers cannot be primes
+        return pfactors #In the end at least pfactors contains compnum
     except KeyboardInterrupt:
         print "Program interrupted by user"
-        print "Factors found so far:",factors
+        print "Factors found so far:",pfactors
         print "Last candidate:",candidate
         raise
 
@@ -99,7 +96,7 @@ def run_test_cases(batch_file):
         for case in Ky: #case is a string
             if arguments.verbose: print case
             t_start=time.time()
-            factorize(int(case))
+            factors=factorize(int(case))
             t_end=time.time()
             if factors == test_cases[case] and arguments.verbose: print "\t",factors, "Passed in",round(t_end-t_start,4),"seconds"
             elif factors != test_cases[case]:
@@ -115,9 +112,10 @@ def run_test_cases(batch_file):
 #signal was catched.
 #We never call this function, it is called by the signal handler
 def signal_show_current_status(signum,stack):
+   (args,varargs,keywords,local_vars)=inspect.getargvalues(stack)
    print "Received signal",signum
-   print "\tFactors found so far:",factors
-   print "\tLast candidate:",candidate
+   print "\tFactors found so far:",local_vars['pfactors']
+   print "\tLast candidate:",local_vars['candidate']
    t_so_far=time.time()
    print "\tTime used:", round(t_so_far-t_start,3),"seconds"
 
@@ -142,7 +140,7 @@ elif arguments.runtest: #If running the test cases
 
 t_start=time.time()
 try:
-    factorize(arguments.num)
+    factors=factorize(arguments.num)
 except KeyboardInterrupt:
     t_end=time.time()
     print "Time used",round(t_end-t_start,4),"seconds"

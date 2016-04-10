@@ -439,18 +439,19 @@ superiores.
 
 
 
-INFORMES ASINCRONES Y RALENTIZACION
+INFORMES ASINCRONOS Y RALENTIZACION
 
 En la versión 1.1.1 he añadido la funcionalidad de mostrar el estado de la factorización
 del número de forma asíncrona.  Cuando la aplicación recibe una señal SIG.USR1 mediante
-una orden como la siguiente:
+una orden como:
 
     $ kill -USR1 <pid>
 
-Entonces se detiene la ejecución de forma temporal mientras se ejecuta una función que
-muestra los factores que se han encontrado hasta ahora, el último candidato probado, y el
-tiempo que lleva ejecutandose la factorización.  Esta funcionalidad es muy util ya que
-permite ver por donde va la factorización y hacernos una idea de cuanto va a tardar.  
+Se detiene la ejecución de forma temporal mientras se ejecuta una función que muestra los
+factores que se han encontrado hasta ahora, el último candidato probado, y el tiempo que
+lleva ejecutandose la factorización, después de esto la ejecución continua por donde iba.
+Esta funcionalidad es muy util ya que permite ver por donde va la factorización y hacernos
+una idea de cuanto va a tardar.  
 
 Sin embargo he observado que esta funcionalidad ralentiza la ejecución del programa,
 parece que se comprueba o muestrea la posible llegada de la señal de forma periodica lo
@@ -460,6 +461,21 @@ pares.
 
 Voy a cambiar el código para que esta funcionalidad se pueda activar a través de una
 opción de línea de comandos, pero por defecto este dessactivada.
+
+
+
+Actualizacion a la versión 1.1.3
+
+Después de varias pruebas he podido comprobar que la ralentización del programa no se
+debía a la existencia de la comprobación de la señal extena USR1, sino a la transformación
+de la variable "candidate" en global, en lugar de local como hasta ahora.
+
+Para recuperar el rendimiento de la aplicación tengo que volver a usar la variable
+"candidate" como local a la función "factorize", pero sin sacrificar la funcionalidad de
+la mostrar de forma asincrona el estado de la factorización.
+
+@#Ya es innecesario que la funcionalidad de captura de señales sea una opción de línea de
+comandos#@
 
 
  1-Número compuesto múltiple
