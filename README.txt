@@ -439,6 +439,28 @@ superiores.
 
 
 
+INFORMES ASINCRONES Y RALENTIZACION
+
+En la versión 1.1.1 he añadido la funcionalidad de mostrar el estado de la factorización
+del número de forma asíncrona.  Cuando la aplicación recibe una señal SIG.USR1 mediante
+una orden como la siguiente:
+
+    $ kill -USR1 <pid>
+
+Entonces se detiene la ejecución de forma temporal mientras se ejecuta una función que
+muestra los factores que se han encontrado hasta ahora, el último candidato probado, y el
+tiempo que lleva ejecutandose la factorización.  Esta funcionalidad es muy util ya que
+permite ver por donde va la factorización y hacernos una idea de cuanto va a tardar.  
+
+Sin embargo he observado que esta funcionalidad ralentiza la ejecución del programa,
+parece que se comprueba o muestrea la posible llegada de la señal de forma periodica lo
+que hace que el tiempo de ejecución de una factorización se multiplique por dos, con lo
+que perdemos la mejora que habíamos ganado con la eliminiación del chequeo de los números
+pares.
+
+Voy a cambiar el código para que esta funcionalidad se pueda activar a través de una
+opción de línea de comandos, pero por defecto este dessactivada.
+
 
  1-Número compuesto múltiple
  2-Número compuesto por dos primos

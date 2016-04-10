@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 1.1.1
+#Version 1.1.2
 
 import sys
 import time
@@ -62,9 +62,10 @@ def factorize(compnum):
 def parse_arguments():
     parser=argparse.ArgumentParser(description="Find the prime factors of an integer number")
     disjunt=parser.add_mutually_exclusive_group()
-    #Next one is actually optional, in case we are running the test batch
+    #Next one is actually optional, just in case we are running the test batch
     parser.add_argument("num", nargs="?", default=1, help="Integer number to factor", type=int)
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
+    parser.add_argument("-s", "--signal", action="store_true", help="Shows status when receives a USR1 signal")
     disjunt.add_argument("--addtest", metavar="FILE",  help="Adds the results of factoring this number, as a test case, to the file specified")
     disjunt.add_argument("--runtest", metavar="FILE", help="Run the test cases")
     return(parser.parse_args()) 
@@ -126,6 +127,8 @@ def signal_show_current_status(signum,stack):
 #pdb.set_trace()
 
 arguments=parse_arguments()
+if arguments.signal:
+    signal.signal(signal.SIGUSR1,signal_show_current_status) #Sets the handler for the signal SIGUSR1
 if arguments.addtest:#If we are adding a new test case 
     test_cases=read_test_cases(arguments.addtest) #Load or create a dictionary of test cases
     if str(arguments.num) in test_cases: #If the test case already exists, say so and exit
@@ -137,8 +140,6 @@ elif arguments.runtest: #If running the test cases
 
 #Not running test, so we continue 
 
-#Sets the handler for the signal SIGUSR1
-signal.signal(signal.SIGUSR1,signal_show_current_status) 
 t_start=time.time()
 try:
     factorize(arguments.num)
