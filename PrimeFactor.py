@@ -10,6 +10,7 @@ import json
 
 #List of factors
 factors=[]
+candidate=2
 
 #Parameters: num.- An integer 
 #            factors.- A list of integers
@@ -29,26 +30,28 @@ def validate_factors(num,factors):
 #Return value.- the list of factors
 #The core functionality of program, finds the prime factors of compnum
 def factorize(compnum):
-    candidate=2 #Candidate to be a factor of num
-    pfactors=[] #List of found factors of number
+    global candidate #Candidate to be a factor of num
+    global factors #List of found factors of number
+    candidate=2
+    factors=[]
 
     try:
         while candidate == 2: #Consider 2 as a special case
             if(compnum%candidate == 0):
-                pfactors.append(candidate)
+                factors.append(candidate)
                 compnum /= candidate
             else:
                 candidate += 1 #Now candidate equals 3
         while candidate <= compnum: 
             if(compnum%candidate == 0):
-                pfactors.append(candidate)
+                factors.append(candidate)
                 compnum /= candidate
             else:
                 candidate += 2 #Only check for odd numbers, even numbers cannot be primes
-        return pfactors #In the end at least pfactors contains compnum
+        #return pfactors #In the end at least pfactors contains compnum
     except KeyboardInterrupt:
         print "Program interrupted by user"
-        print "Factors found so far:",pfactors
+        print "Factors found so far:",factors
         print "Last candidate:",candidate
         raise
 
@@ -95,7 +98,7 @@ def run_test_cases(batch_file):
         for case in Ky: #case is a string
             if arguments.verbose: print case
             t_start=time.time()
-            factors=factorize(int(case))
+            factorize(int(case))
             t_end=time.time()
             if factors == test_cases[case] and arguments.verbose: print "\t",factors, "Passed in",round(t_end-t_start,4),"seconds"
             elif factors != test_cases[case]:
@@ -121,7 +124,7 @@ elif arguments.runtest: #If running the test cases
 
 t_start=time.time()
 try:
-    factors=factorize(arguments.num)
+    factorize(arguments.num)
 except KeyboardInterrupt:
     t_end=time.time()
     print "Time used",round(t_end-t_start,4),"seconds"
