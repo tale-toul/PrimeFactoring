@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 1.1.3
+#Version 1.1.4
 
 import sys
 import time
@@ -33,6 +33,7 @@ def validate_factors(num,factors):
 def factorize(compnum):
     candidate=2 #Candidate to be a factor of num
     pfactors=[] #List of found factors of number
+    signal.signal(signal.SIGUSR1,signal_show_current_status) #Sets the handler for the signal SIGUSR1
     try:
         while candidate == 2: #Consider 2 as a special case
             if(compnum%candidate == 0):
@@ -46,6 +47,7 @@ def factorize(compnum):
                 compnum /= candidate
             else:
                 candidate += 2 #Only check for odd numbers, even numbers cannot be primes
+        signal.signal(signal.SIGUSR1,signal.SIG_DFL) #Sets the handler to its default state
         return pfactors #In the end at least pfactors contains compnum
     except KeyboardInterrupt:
         print "Program interrupted by user"
@@ -62,7 +64,6 @@ def parse_arguments():
     #Next one is actually optional, just in case we are running the test batch
     parser.add_argument("num", nargs="?", default=1, help="Integer number to factor", type=int)
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
-    parser.add_argument("-s", "--signal", action="store_true", help="Shows status when receives a USR1 signal")
     disjunt.add_argument("--addtest", metavar="FILE",  help="Adds the results of factoring this number, as a test case, to the file specified")
     disjunt.add_argument("--runtest", metavar="FILE", help="Run the test cases")
     return(parser.parse_args()) 
@@ -122,11 +123,9 @@ def signal_show_current_status(signum,stack):
 
 #####MAIN#######
 
-#pdb.set_trace()
+#pdb.set_trace()  #Uncomment to debug
 
 arguments=parse_arguments()
-if arguments.signal:
-    signal.signal(signal.SIGUSR1,signal_show_current_status) #Sets the handler for the signal SIGUSR1
 if arguments.addtest:#If we are adding a new test case 
     test_cases=read_test_cases(arguments.addtest) #Load or create a dictionary of test cases
     if str(arguments.num) in test_cases: #If the test case already exists, say so and exit

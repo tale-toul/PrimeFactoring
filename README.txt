@@ -464,18 +464,33 @@ opción de línea de comandos, pero por defecto este dessactivada.
 
 
 
-Actualizacion a la versión 1.1.3
+Actualizacion sobre el problema de ralentización
 
 Después de varias pruebas he podido comprobar que la ralentización del programa no se
-debía a la existencia de la comprobación de la señal extena USR1, sino a la transformación
-de la variable "candidate" en global, en lugar de local como hasta ahora.
+debe a la existencia de la comprobación de la señal extena USR1, sino a la transformación
+de la variable "candidate" en global, en lugar de local como hasta ahora.  Por lo que se
+ve el acceso a una variable global es más lento que el uso de una local.
 
 Para recuperar el rendimiento de la aplicación tengo que volver a usar la variable
 "candidate" como local a la función "factorize", pero sin sacrificar la funcionalidad de
-la mostrar de forma asincrona el estado de la factorización.
+mostrar de forma asincrona el estado de la factorización.
 
-@#Ya es innecesario que la funcionalidad de captura de señales sea una opción de línea de
-comandos#@
+En la versión 1.1.3 las variables **pfactors** y **candidate**, esta última es la más importante,
+se vuelven a dejar como locales a la función "_factorize_".  Para poder mostrar estas
+variables cuando llega una señal USR1 se utiliza el _stack frame_ que se le pasa como
+parametro a la función que maneja la señal; este _stack frame_ se puede consultar a traves
+del módulo **inspect** en concreto el método **inspect.getargvalues(stack)** que devuelve
+entre otros un diccionario con las variables locales de la función que se estaba
+ejecutando cuando se recibió la señal:
+
+   (args,varargs,keywords,local_vars)=inspect.getargvalues(stack)
+
+Ahora ya puedo mostrar el valor accediendo a ellas:
+
+    local_vars['pfactors']
+    local_vars['candidate']
+
+
 
 
  1-Número compuesto múltiple
