@@ -91,18 +91,22 @@ def read_test_cases(file):
 #in the test cases
 def run_test_cases(batch_file):
     test_cases=read_test_cases(batch_file) #Load or create a dictionary of test cases
-    if len(test_cases) >0: #There are tests to be run
-        Ky=test_cases.keys() #Get a list with the keys (numbers) in the dictionary
+    count=1
+    test_cases_size=len(test_cases)
+    if test_cases_size >0: #There are tests to be run
+        Ky=test_cases.keys() #Get a list of the keys (numbers) in the dictionary
         Ky.sort(key=int) #sort the list numerically
         for case in Ky: #case is a string
             if arguments.verbose: print case
             t_start=time.time()
             factors=factorize(int(case))
             t_end=time.time()
-            if factors == test_cases[case] and arguments.verbose: print "\t",factors, "Passed in",round(t_end-t_start,4),"seconds"
+            if factors == test_cases[case] and arguments.verbose: 
+                print "\t",factors, "Passed in",round(t_end-t_start,4),"seconds.", count,"of", test_cases_size
             elif factors != test_cases[case]:
                 print "FAILED test:", case,test_cases[case],"!=",case,factors,"time",round(t_end-t_start,4),"seconds"
                 raw_input("Press any key to continue")
+            count +=1
     else: print "Empty test case batch"
 
 #Parameters: signum.- The signal number used with this function
@@ -126,6 +130,9 @@ def signal_show_current_status(signum,stack):
 #pdb.set_trace()  #Uncomment to debug
 
 arguments=parse_arguments()
+if arguments.num < 1:
+    print "The number to factor must be a positive integer"
+    exit(-4)
 if arguments.addtest:#If we are adding a new test case 
     test_cases=read_test_cases(arguments.addtest) #Load or create a dictionary of test cases
     if str(arguments.num) in test_cases: #If the test case already exists, say so and exit
