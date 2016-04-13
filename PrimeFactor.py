@@ -145,7 +145,8 @@ except KeyboardInterrupt:
     print "Time used",round(t_end-t_start,4),"seconds"
     exit(3)
 t_end=time.time()
-if validate_factors(arguments.num,factors): #@Unnecesary if the number is prime@#
+
+if len(factors)== 1 or validate_factors(arguments.num,factors): #If there's only one factor or they multiply to the orignal number
     print "Factors of",arguments.num,"=",factors,
     if arguments.verbose: print "In",round(t_end-t_start,4),"seconds"
     if arguments.addtest:#Save the test case if requested and it has not been saved before
