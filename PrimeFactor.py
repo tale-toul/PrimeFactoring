@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 1.1.4
+#Version 1.2.0
 
 import sys
 import time
@@ -41,12 +41,35 @@ def factorize(compnum):
                 compnum /= candidate
             else:
                 candidate += 1 #Now candidate equals 3
-        while candidate <= compnum: 
+        while candidate == 3: #Consider 3 as a special case
             if(compnum%candidate == 0):
                 pfactors.append(candidate)
                 compnum /= candidate
             else:
-                candidate += 2 #Only check for odd numbers, even numbers cannot be primes
+                candidate += 2 #Now candidate equals 5
+        while candidate == 5: #Consider 5 as a special case
+            if(compnum%candidate == 0):
+                pfactors.append(candidate)
+                compnum /= candidate
+            else:
+                candidate += 2 #Now candidate equals 7
+        while candidate <= compnum: #Bucle general
+            while compnum%candidate == 0: # For candidates ending in 7
+                pfactors.append(candidate)
+                compnum /= candidate
+            candidate += 2 #Only check for odd numbers, even numbers cannot be primes
+            while compnum%candidate == 0: #For candidates ending in 9
+                pfactors.append(candidate)
+                compnum /= candidate
+            candidate += 2
+            while compnum%candidate == 0: #For candidates ending in 1
+                pfactors.append(candidate)
+                compnum /= candidate
+            candidate += 2
+            while compnum%candidate == 0: #For candidates ending in 3
+                pfactors.append(candidate)
+                compnum /= candidate
+            candidate += 4
         signal.signal(signal.SIGUSR1,signal.SIG_DFL) #Sets the handler to its default state
         return pfactors #In the end at least pfactors contains compnum
     except KeyboardInterrupt:
@@ -90,6 +113,7 @@ def read_test_cases(file):
 #Factorizes the numbers stored as test cases and compares the results with the ones found
 #in the test cases
 def run_test_cases(batch_file):
+    global t_start
     test_cases=read_test_cases(batch_file) #Load or create a dictionary of test cases
     if len(test_cases) >0: #There are tests to be run
         Ky=test_cases.keys() #Get a list with the keys (numbers) in the dictionary

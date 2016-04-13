@@ -300,6 +300,7 @@ primer número par y por lo tanto sí puede ser primo.  El número compuesto se 
 dividir por 2, si es divisible se volverá a probar a dividior por 2, así tantas veces como
 el numero resultante de la división siga siendo divisible por 2, por ejemplo 8 será
 probado tres veces a divir por 2.
+
 Cuando el número resultante de la división ya no sea divisible por 2, aumentamos en uno el
 candidato, pasando al 3, y probamos a dividir de nuevo, cuando el número a factorizar no
 sea divisible por 3, no pasamos al siguiente sino que saltamos al 5, sumando 2 al
@@ -311,7 +312,7 @@ mitad y por lo tanto debe suponer un aumento considerable en la velocidad del pr
 
 Pruebas de la versión 1.1
 
-En esta versión vamos a empezar con el nivel 6, ya que los anterirores ya se resolvian muy
+En esta versión vamos a empezar con el nivel 5, ya que los anterirores ya se resolvian muy
 rápido en la versión 1.0
 
 -Nivel 5
@@ -364,7 +365,6 @@ tiempo requerido se ha reducido a la mitad, ya que ahora solo probamos la mitad 
 posibles candidatos.
 
 -Nivel 9
-
  1-Número compuesto múltiple
     455133121 = [139, 1237, 2647] In 0.0025 seconds
     370918413 = [3, 3, 3, 71, 181, 1069] In 0.0013 seconds
@@ -393,7 +393,16 @@ version, el timpo se ha reducido a la mitad del que se necesito en la version 1.
  2-Número compuesto por dos primos
  3-Número primo
     1569874541 = [1569874541] In 1367.8559 seconds (más de 22 minutos)
-    3569874547 = [3569874547L] In 12343.9727 seconds (más de 3 horas y media)
+    3569874547 = [3569874547L] In 12343.9727 seconds (más de 3 horas y media).- La
+    factorización de este número es mucho más lenta, esto se debe a que hemos pasado de
+    usar un número de tipo "int" a uno sin límite de precisión, la pista está en el sufijo
+    L:
+    https://docs.python.org/2/library/stdtypes.html#numeric-types-int-float-long-complex
+    El número máximo que se puede tratar como int viene determinado por sys.maxint:
+
+        >>import sys
+        >>sys.maxint
+        2147483647
 
 Nivel NO batido.  Este nivel de momento nos bate a nosotros.
 
@@ -490,6 +499,99 @@ Ahora ya puedo mostrar el valor accediendo a ellas:
     local_vars['pfactors']
     local_vars['candidate']
 
+
+
+VERSION 1.2
+
+Esta versión es una extensión de la versión 1.1.  Hemos llevado un poco más haya el
+concepto de no probar números que sabemos positivamente que no son primos.  
+
+En esta versión no vamos a probar los números que terminan en 5, excepto el propio 5.
+Primero probaremos los candidatos 2, 3 y 5, y luego entramos en un bucle general que va
+probando los números que terminan en 7, 9, 1 y 3, a parte de los números pares que ya no
+probabamos, también nos saltamos los números que son divisibles por 5. 
+
+Si el número a factorizar esta compuesto exclusivamente por factores 2, 3 y 5 no se
+comprueba la condición de final del programa (candidate <= compnum) hasta llegar al bucle
+principal, sin embargo esto no supondra apenas perdida de tiempo.
+
+Ya en el bucle principal probamos cada candidato terminado en 7, 9, 1 y 3 sin añadir
+ninguna condición adicional, solo estamos expandiendo las comprobacione que antes teníamos
+en un solo bucle while; tras comprobar el candidato terminado en 3 en lugar de añadir 2 al
+candidato, añadimos 4 y saltamos el 5, llegando al 7.  
+
+La clave para mejorar la velocidad de factorización está en no añadir nuevas
+comprobaciones y eliminar un candidato de cada 5 posibles lo que supone una reducción del
+20% en el número de candidatos a probar, lo cual debe traducirse en una reducción de ese
+mismo 20% en el tiempo de factorización de los un números.
+
+
+
+
+Pruebas de la versión 1.2
+
+-Nivel 7
+ 1-Número compuesto múltiple
+    5577944 = [2, 2, 2, 19, 36697] In 0.025 seconds
+ 2-Número compuesto por dos primos
+    2713147 = [557, 4871] In 0.0036 seconds
+    4789649 = [2053, 2333] In 0.002 seconds
+ 3-Número primo
+    5587943 = [5587943] In 4.4989 seconds
+    4789637 = [4789637] In 3.8675 seconds
+
+Nivel batido.
+
+-Nivel 8
+ 1-Número compuesto múltiple
+    12773543 = [29, 151, 2917] In 0.0021 seconds
+ 2-Número compuesto por dos primos
+    26503111 = [4871, 5441] In 0.0038 seconds
+ 3-Número primo
+    12763547 = [12763547] In 8.4344 seconds
+    32763557 = [32763557] In 22.211 seconds
+    52763197 = [52763197] In 36.5111 seconds
+
+Nivel batido.
+
+-Nivel 9
+ 1-Número compuesto múltiple
+    455133121 = [139, 1237, 2647] In 0.002 seconds
+    370918413 = [3, 3, 3, 71, 181, 1069] In 0.001 seconds
+
+ 2-Número compuesto por dos primos
+    370918411 = [5441, 68171] In 0.0471 seconds
+
+ 3-Número primo
+    370918423 = [370918423] In 247.586 seconds
+    469241039 = [469241039] In 376.4097 seconds
+    540918487 = [540918487] In 441.5368 seconds
+
+Nivel batido.
+
+-Nivel 10
+ 1-Número compuesto múltiple
+    
+    1569874542 = [2, 3, 47, 1063, 5237] In 0.0044 seconds
+    6569874545 = [5, 13, 83, 1217771] In 3.427 seconds
+    6569374545 = [3, 3, 5, 19, 7683479] In 22.5648 seconds.  Aunque se ha acelerado la
+    factorización sigue pasando lo mismo con este número, si factorizamos el último primo
+    (7683479) solo necesita unos 7 segundos, pero el número completo tarda 4 veces más, no
+    se a qué se debe esto ya que los primeros factores se encuentran rápido y entonces nos
+    queda el último factor, que ahora tarda mucho más. 
+    
+ 2-Número compuesto por dos primos
+    2803249819 = [36523, 76753] In 0.2087 seconds
+
+ 3-Número primo
+
+    1569874541 = [1569874541] In 1271.9291 seconds
+    3569874547 = [3569874547L] In 8839.9594 seconds.  Más de 2 horas y media, parte de la
+        mejora en la velocidad puede deberse a que he cerrado otras aplicaciones (vim) y
+        he dejado la sesión (screen) desconectada de la consola ssh.  El tiempo ha
+        mejorado mucho pero aun es demasiado.
+
+Nivel no batido.
 
 
 
