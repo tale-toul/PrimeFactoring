@@ -669,7 +669,7 @@ factorizar un número.  Hagamos unas pruebas con la nueva versión y luego
 cuantificaremos esta reducción.
 
 
-Pruebas de la version 1.3 (parte I)
+Pruebas de la version 1.3 
 
 -Nivel 9
  1-Número compuesto múltiple
@@ -705,4 +705,83 @@ Nivel batido.  Estos resultados sí que suponen una reducción impresionante
 Nivel batido.  La mejora en tiempo es increible, por los tiempos obtenidos se observa
                una reducción en 100 mil veces con respecto a los tiempos obtenidos antes.
 
+-Nivel 11
+ 1-Número compuesto múltiple
 
+
+ 2-Número compuesto por dos primos
+    2803249819 = [36523, 76753L] In 0.1846 seconds
+
+ 3-Número primo
+
+    1569874541 = [1569874541] In 1271.9291 seconds
+    3569874547 = [3569874547L] In 8839.9594 seconds.
+    1569874541 = [1569874541] In 0.0774 seconds
+    3569874547 = [3569874547L] In 0.2893 seconds
+
+Nivel batido.  La mejora en tiempo es increible, por los tiempos obtenidos se observa
+               una reducción en 100 mil veces con respecto a los tiempos obtenidos antes.
+
+
+
+
+
+
+
+
+
+
+CALCULO DEL CANDIDATO MÁXIMO
+
+De la explicación anterior (ver Descarte de candidatos insensatos) se deduce la existencia
+de un candidato máximo, más haya del cual nunca vamos a probar nuevos factores,
+idependientemente de que el número que estemos factorizando sea primo o compuesto, en todo
+caso si el número es compuesto el candidato máximo se reduce.  
+
+Nos interesa conocer el valor de este candidato máximo, para calcularlo al principio del
+programa y no tener que estar actualizando su valor por cada posible candidato que
+probamos durante el proceso de factorización, con ello nos ahorraremos operaciones y
+aumentaremos aun más la velocidad del programa.
+
+Veamos la evolución de los primeros candidatos:
+
+Cuando el candidato C=2 => el candidato máximo M_C=(número)/2
+Cuando el candidato C=3 => el candidato máximo M_C=(número)/3
+Cuando el candidato C=5 => el candidato máximo M_C=(número)/5
+
+La condición que se comprueba en la aplicación es:
+
+...
+while candidate <= max_candidate:
+...
+
+De aquí se puede deducir la siguiente formula:
+     C <= (número)/C
+     C^2 <= número
+     C <= sqrt(número)
+
+Entonces nuestro candidato máximo es la raiz cuadrada del número a factorizar. La raiz
+cuadrada de un número será en general un número con decimales, por lo tanto redondeamos la
+formula por arriba, que finalmente queda:
+
+    C <= sqrt(número) + 1
+
+La raiz cuadrada de un número, en general, estará formada por otro número que tendrá la
+mitad de cifras que el número original.  Por ejemplo la raiz cuadrada de un número de 8
+cifras será un número de 4 cifras.  De aquí se deduce, si comparamos el metodo de la
+versión 1.3 con el de versiones anteriores; que en el peor de los casos, cuando estemos
+intentando factorizar un número primo, el problema se reduce al nivel del que hasta ahora
+teníamos con un número con la mitad de cifras.  Por ejemplo la factorización de un número
+primo de 10 cifras debe ser equivalente en la versión 1.3 a la factorización de un número
+de 5 cifras en versiones anteriores.  
+
+
+
+Comprobaciones innecesarias, mejora de rendimiento
+
+La lógica del programa no comprueba que el candidato ha superado el límite por cada nuevo
+candidato que se prueba, sino una vez por cada decena; esto hace que hagamos unas cuantas
+comprobaciones de candidatos innecesarias, como máximo 3, una vez que ya hemos superado el
+límite; pero esto probablemente mejora el rendimiento del programa para números grandes ya
+que la mayoría de las comprobaciones son negativas, es decir el candidato no es mayor que
+el máximo; a menos comprobaciones más rápido es el programa.
