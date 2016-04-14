@@ -6,6 +6,9 @@ List of features pending
 
 -User gmpy2 (gnu multiprecition number)
 
+-Compute the maxcandidate at the begining of the program instead of updating it for every
+ candidate tried, this should reduce the number of operations performed.
+
 
 DONE
 

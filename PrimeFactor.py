@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 1.2.0
+#Version 1.3.0
 
 import sys
 import time
@@ -31,6 +31,7 @@ def validate_factors(num,factors):
 #Return value.- the list of factors
 #The core functionality of program, finds the prime factors of compnum
 def factorize(compnum):
+    max_candidate=compnum
     candidate=2 #Candidate to be a factor of num
     pfactors=[] #List of found factors of number
     signal.signal(signal.SIGUSR1,signal_show_current_status) #Sets the handler for the signal SIGUSR1
@@ -39,37 +40,53 @@ def factorize(compnum):
             if(compnum%candidate == 0):
                 pfactors.append(candidate)
                 compnum /= candidate
+                max_candidate = compnum
             else:
                 candidate += 1 #Now candidate equals 3
+                max_candidate = (compnum / candidate) + 1
         while candidate == 3: #Consider 3 as a special case
             if(compnum%candidate == 0):
                 pfactors.append(candidate)
                 compnum /= candidate
+                max_candidate = compnum
             else:
                 candidate += 2 #Now candidate equals 5
+                max_candidate = (compnum / candidate) + 1
         while candidate == 5: #Consider 5 as a special case
             if(compnum%candidate == 0):
                 pfactors.append(candidate)
                 compnum /= candidate
+                max_candidate = compnum
             else:
                 candidate += 2 #Now candidate equals 7
-        while candidate <= compnum: #Bucle general
+                max_candidate = (compnum / candidate) + 1
+#----MAIN LOOP----
+        while candidate <= max_candidate: 
             while compnum%candidate == 0: # For candidates ending in 7
                 pfactors.append(candidate)
                 compnum /= candidate
+                max_candidate = compnum
             candidate += 2 #Only check for odd numbers, even numbers cannot be primes
+            max_candidate = (compnum / candidate) + 1
             while compnum%candidate == 0: #For candidates ending in 9
                 pfactors.append(candidate)
                 compnum /= candidate
+                max_candidate = compnum
             candidate += 2
+            max_candidate = (compnum / candidate) + 1
             while compnum%candidate == 0: #For candidates ending in 1
                 pfactors.append(candidate)
                 compnum /= candidate
+                max_candidate = compnum
             candidate += 2
+            max_candidate = (compnum / candidate) + 1
             while compnum%candidate == 0: #For candidates ending in 3
                 pfactors.append(candidate)
                 compnum /= candidate
+                max_candidate = compnum
             candidate += 4
+            max_candidate = (compnum / candidate) + 1
+        if compnum != 1: pfactors.append(compnum) 
         signal.signal(signal.SIGUSR1,signal.SIG_DFL) #Sets the handler to its default state
         return pfactors #In the end at least pfactors contains compnum
     except KeyboardInterrupt:

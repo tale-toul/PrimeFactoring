@@ -594,7 +594,115 @@ Nivel batido.
 Nivel no batido.
 
 
+VERSION 1.3
 
+Las versiones 1.1 y 1.2 han mejorado el rendimiento sensiblemente, eliminando el 60% de
+los candidatos a probar en el proceso de factorización: de cada decena eliminamos los
+números pares y los terminados en 5.  Sin embargo esta importate mejora se queda en poca
+cosa cuando la comparamos con el incremento de dificultad al pasar al nivel 10, no solo se
+multiplica por 10 el numero de posibles números, sino que además los números que superan
+el límite de aquellos que se pueden representar internamente con un entero (int), son
+representados con un tipo de número sin límite que es más lento en el tratamiento, de ahí
+que el incremento a la hora de calcular un número primo en el nivel 10 se haya
+multiplicado, no por 10, sino por 40.
+
+En resumen nuestras mejoras no nos han permitido superar ni un solo nivel.  Intentaremos
+corregir este defecto en la versión 1.3 del programa.
+
+
+
+Descarte de candidatos insensatos
+
+Vamos a fijarnos bien en el procedimiento de factorización y ver como podemos mejorarlo,
+nos interesa eliminar más candidatos del proceso de busqueda de factores.
+
+Cuando empezamos a buscar candidatos siempre empezamos desde los más pequeños, el primero
+que probamos es el 2.  Si nuestro número es divisible entre 2, lo dividimos, guardamos el
+2 en la lista de factores y continuamos con la facorización del número resultante de la
+división, y ahora el problema se ha reducido a la mitad.  ¿Pero qué pasa si el número no es
+divisible entre 2? cogemos el siguiente candidato, el 3 y repetimos el proceso anterior, y
+así continuamos hasta que el candidato sea igual al número a factorizar, se dividen ambos,
+el resultado es 1 y entonces el siguiente candidato es más grande que el número a
+factorizar (1) y se termina la factorización.
+
+Todo esto ya lo sabemos, pero pensemos un momento en la situación en que los candidatos
+que estamos probando son grandes y están ya cerca del número a factorizar.  Es evidente
+que estos candidatos no pueden ser factores del número a factorizar, si uno de ellos lo
+fuera, esto quiere decir que al dividir nuestro número entre el candidato, debo obtener
+otro número entero, que además debe ser muy pequeño porque nuestro candidato es grande (se
+acerca al número a factorizar).  El candidato más pequeño posible es el 2, así que
+cualquier candidato "grande" que al dividir al número a factorizar de como resultado menos
+que dos, es un candidato "insensato" que nunca puede ser factor del número a factorizar y
+lo podemos descartar.
+
+Veamoslo desde otro punto de vista: supongamos que dividimos el número a factorizar entre
+el primero de los factores posibles, que es el 2; si el número no es divisible entre 2,
+cualquier candidato que sea mayor que la el número partido por 2 no puede ser un factor de
+este, ya que cualquier número mayor que la mitad del número a factorizar, al multiplicarlo
+por el menor de los números primos posibles (2) simpre nos dará un número mayor que el
+número original, y si lo multiplicamos por otro factor más grande (3,5,7,etc) el resultado
+será aun mas grande que el número original.  En conclusión cualquier candidato que sea
+mayor que la mitad del número a factorizar no puede ser un factor válido, es pues un
+candidato "insensato" y lo podemos descartar desde el principio, reduciendo a la mitad, de
+un plumazo el número de candidatos a probar.
+
+Esta idea la podemos extender, supongamos que ahora dividimos el número a factorizar entre
+el siguiente candidato (3), si es divisible calculamos el resultado, guardamos el factor
+y continuamos factorizando el número resultante.  Pero si no es divisible, cualquier
+candidato mayor que el número a factorizar dividido entre 3 no puede ser un factor válido,
+ya que cualquiera de estos candidatos al multiplicarlos por otro candidato mayor que 3 nos
+da como resultado un número mayor que el número a factorizar, y ya sabemos que no los
+podemos multiplicar por 2 ó por 3, que ya hemos determinado que no son factores válidos
+del número a factorizar.  Por lo tanto si el número a factorizar no es divisible entre 3
+lo candidatos mayores que 1 tercio del número a factorizar son candidatos "insensatos" y
+los descartamos.
+
+Este patrón se repite para cada candidato que probamos y no es un factor del número a
+factorizar.  Si el número no es divisible entre el candidato, todo posible candidato mayor
+que el número a factorizar dividido entre el actual candidato se puede descartar.
+
+Cambiaremos nuestro algoritmo de calculo y por cada candidato que probemos ajustaremos el
+valor del candidato máximo por encima del cual no probaremos ninguno más.
+
+Esta mejora reducirá enormemente el número de candidatos que tenemos que probar para
+factorizar un número.  Hagamos unas pruebas con la nueva versión y luego 
+cuantificaremos esta reducción.
+
+
+Pruebas de la version 1.3 (parte I)
+
+-Nivel 9
  1-Número compuesto múltiple
+    455133121 = [139, 1237, 2647] In 0.0021 seconds
+    370918413 = [3, 3, 3, 71, 181, 1069] In 0.0006 seconds
+
  2-Número compuesto por dos primos
+    370918411 = [5441, 68171] In 0.0079 seconds
+
  3-Número primo
+    370918423 = [370918423] In 0.0265 seconds
+    469241039 = [469241039] In 0.0392 seconds
+    540918487 = [540918487] In 0.0282 seconds
+
+Nivel batido.  Estos resultados sí que suponen una reducción impresionante
+
+-Nivel 10
+ 1-Número compuesto múltiple
+    1569874542 = [2, 3, 47, 1063, 5237] In 0.0016 seconds
+    6569874545 = [5, 13, 83, 1217771L] In 0.0051 seconds
+    6569374545 = [3, 3, 5, 19, 7683479L] In 0.0115 seconds
+
+ 2-Número compuesto por dos primos
+    2803249819 = [36523, 76753L] In 0.1846 seconds
+
+ 3-Número primo
+
+    1569874541 = [1569874541] In 1271.9291 seconds
+    3569874547 = [3569874547L] In 8839.9594 seconds.
+    1569874541 = [1569874541] In 0.0774 seconds
+    3569874547 = [3569874547L] In 0.2893 seconds
+
+Nivel batido.  La mejora en tiempo es increible, por los tiempos obtenidos se observa
+               una reducción en 100 mil veces con respecto a los tiempos obtenidos antes.
+
+
