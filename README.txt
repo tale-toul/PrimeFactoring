@@ -707,26 +707,65 @@ Nivel batido.  La mejora en tiempo es increible, por los tiempos obtenidos se ob
 
 -Nivel 11
  1-Número compuesto múltiple
-
-
+    25488769875 = [3, 5, 5, 5, 613, 110881L] In 0.0029 seconds 
  2-Número compuesto por dos primos
-    2803249819 = [36523, 76753L] In 0.1846 seconds
-
+    25763162207 = [74699, 344893L] In 0.4127 seconds 
  3-Número primo
+    24488769871 = [24488769871L] In 0.9026 seconds
+    34488769921 = [34488769921L] In 0.8911 seconds
 
-    1569874541 = [1569874541] In 1271.9291 seconds
-    3569874547 = [3569874547L] In 8839.9594 seconds.
-    1569874541 = [1569874541] In 0.0774 seconds
-    3569874547 = [3569874547L] In 0.2893 seconds
+Nivel batido.
 
-Nivel batido.  La mejora en tiempo es increible, por los tiempos obtenidos se observa
-               una reducción en 100 mil veces con respecto a los tiempos obtenidos antes.
+-Nivel 12
+ 1-Número compuesto múltiple
+    569887462577 = [29, 181, 2591, 41903L] In 0.0133 seconds
+ 2-Número compuesto por dos primos
+    537898651883 = [568783, 945701L] In 3.0829 seconds
+ 3-Número primo
+    545687416927 = [545687416927L] In 4.0713 seconds
 
+Nivel batido
 
+-Nivel 13
+ 1-Número compuesto múltiple
+    5456874516927 = [3, 107, 9133, 1861339L] In 0.0398 seconds
+ 2-Número compuesto por dos primos
+    5160575927179 = [945701, 5456879L] In 6.1602 seconds
+ 3-Número primo
+    5425687106863 = [5425687106863L] In 12.4455 seconds
 
+Nivel batido.  Interesante, que el tiempo de factorización del número primo ha aumentado,
+pero no se ha multiplicado por 10 como se esperaba sino solo por tres.
 
+-Nivel 14
+ 1-Número compuesto múltiple
+    45932156884361 = [11, 17, 5557, 44201279L] In 0.0321 seconds 
+ 2-Número compuesto por dos primos
+    42619824616849 = [4328921, 9845369L] In 23.7017 seconds
+ 3-Número primo
+    56083345812829 = [56083345812829L] In 41.4079 seconds
 
+Nivel batido.
 
+-Nivel 15
+ 1-Número compuesto múltiple
+    560833458128296 = [2, 2, 2, 1300967, 53886211L] In 7.3137 seconds
+ 2-Número compuesto por dos primos
+    460746856969877 = [9845369, 46798333L] In 56.3123 seconds
+ 3-Número primo
+    536944873216931 = [536944873216931L] In 136.4375 seconds
+
+Nivel batido.
+
+-Nivel 16
+ 1-Número compuesto múltiple
+    3644792236778694 = [2, 3, 101, 42473, 141607813L] In 0.2011 seconds
+ 2-Número compuesto por dos primos
+    3849788417036503 = [59423701, 64785403L] In 368.5947 seconds
+ 3-Número primo
+    5332147896211517 = [5332147896211517L] In 462.7662 seconds
+
+Nivel batido.
 
 
 
