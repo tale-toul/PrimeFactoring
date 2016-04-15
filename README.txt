@@ -818,9 +818,100 @@ de 5 cifras en versiones anteriores.
 
 Comprobaciones innecesarias, mejora de rendimiento
 
-La lógica del programa no comprueba que el candidato ha superado el límite por cada nuevo
-candidato que se prueba, sino una vez por cada decena; esto hace que hagamos unas cuantas
-comprobaciones de candidatos innecesarias, como máximo 3, una vez que ya hemos superado el
-límite; pero esto probablemente mejora el rendimiento del programa para números grandes ya
-que la mayoría de las comprobaciones son negativas, es decir el candidato no es mayor que
-el máximo; a menos comprobaciones más rápido es el programa.
+En la versión 1.3.1 la lógica del programa no comprueba que el candidato ha superado el
+límite por cada nuevo candidato que se prueba, sino una vez por cada decena; esto hace que
+hagamos unas cuantas comprobaciones de candidatos innecesarias, como máximo 3, una vez que
+ya hemos superado el límite; pero esto probablemente mejora el rendimiento del programa
+para números grandes ya que la mayoría de las comprobaciones son negativas, es decir el
+candidato no es mayor que el máximo; a menos comprobaciones más rápido es el programa.
+
+
+Pruebas de la version 1.3.1
+
+-Nivel 15
+ 1-Número compuesto múltiple
+    560833458128296 = [2, 2, 2, 1300967, 53886211L] In 3.3503 seconds
+ 2-Número compuesto por dos primos
+    460746856969877 = [9845369, 46798333L] In 23.171 seconds
+ 3-Número primo
+    536944873216931 = [536944873216931L] In 57.6638 seconds
+
+Nivel batido.  Me ha sorprendido que la mejora en el rendimiento sea tan grande,
+reduciendose los tiempos a menos de la mitad.
+
+-Nivel 16
+ 1-Número compuesto múltiple
+    3644792236778694 = [2, 3, 101, 42473, 141607813L] In 0.1109 seconds
+ 2-Número compuesto por dos primos
+    3849788417036503 = [59423701, 64785403L] In 149.1083 seconds
+ 3-Número primo
+    5332147896211517 = [5332147896211517L] In 203.8097 seconds
+
+Nivel batido.
+
+-Nivel 17
+ 1-Número compuesto múltiple
+    64795512344765945 = [5, 31, 83, 157, 653, 49127233L] In 0.0144 seconds
+
+ 2-Número compuesto por dos primos
+    32563672784171761 = [67894373, 479622557L] In 147.9295 seconds
+
+ 3-Número primo
+    55641397544639089 = [55641397544639089L] In 612.2571 seconds
+
+Nivel batido.
+
+-Nivel 18
+
+ 1-Número compuesto múltiple
+    954788612384655179 = [53077, 118429, 151894763L] In 0.2716 seconds
+ 2-Número compuesto por dos primos
+    498542964342543929 = [652231511, 764365039L] In 1679.6016 seconds
+ 3-Número primo
+    546698741123646019 = [546698741123646019L] In 1904.126 seconds
+
+Nivel batido.  Es interesante ver como el tiempo necesario para factorizar un número primo
+(3) o un número compuesto por dos primos del mismo nivel (2) es similar
+
+
+
+¿Por qué es similar el tiempo de factorización de números (2) y (3)?
+
+Vemos que los tiempos necesarios para factorizar números de los tipos (2) y (3) son del
+mismo orden, salvo en el nivel 17, después veremos por qué la diferencia en este nivel.
+
+La razón de que los tiempos sean similares es que el problema de factorización se ha
+reducido en buscar un candidato dentro que como máximo puede tener el valor raiz cuadrada
+del número a factorizar.  La raiz cuadrada, en general, será un número que tendrá la
+mita de de las cifras que el número a factorizar.  
+
+Por otra parte en el caso de los números (2) tenemos un número compuesto por dos primos de
+similar cantidad de cifras, es decir es del orden de la raíz cuadrada del número a
+factorizar.  Vemos pues que encontrar el menor factor en este caso es un problema similar
+a llegar a máximo factor en el caso (3).  Cuando encontramos el menor de los factores, se
+divide el número original entre este factor, y el nuevo número que tenemos que factorizar
+tiene un nuevo máximo factor, que es del orden de su raiz cuadrada, y que es menor que el
+último candidato probado, que además es el primer factor encontrado, con lo que tan pronto
+como encontramos el primer factor se termina el proceso de factorización del número
+compuesto.
+
+El caso del nivel 17 es un tanto extremo: el número (2) está compuesto por dos factores,
+uno de ellos de 8 cifras y el otro de nueve.  El proceso de factorización se termina al
+encontrar el factor de 8 cifras.  Sin embargo en el caso de número (3) la raiz cuadrada
+del número es del orden de 9 cifras, por lo tanto es normal que al tener una cifra más el
+tiempo de factorización sea aproximadamente 5 veces más grande.
+
+
+
+-Nivel 19
+ 1-Número compuesto múltiple
+    3689445781236985154 = [2, 7, 11, 37, 121267, 5339444219L] In 0.3112 seconds
+ 2-Número compuesto por dos primos
+    2537675226119470571 = [548997653, 4622379007L] In 1450.0095 seconds
+ 3-Número primo
+    5977455832169755667 = [5977455832169755667L] In 6907.1926 seconds. (casi dos horas)
+
+Nivel no superado.  En este nivel el tiempo se ha disparado a casi dos horas, y por lo
+tanto se considera no superado.
+
+
