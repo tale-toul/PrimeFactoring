@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 1.3.1
+#Version 1.3.3
 
 import sys
 import time
@@ -37,27 +37,21 @@ def factorize(compnum):
     pfactors=[] #List of found factors of number
     signal.signal(signal.SIGUSR1,signal_show_current_status) #Sets the handler for the signal SIGUSR1
     try:
-        while candidate == 2: #Consider 2 as a special case
-            if(compnum%candidate == 0):
-                pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate =int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-            else:
-                candidate += 1 #Now candidate equals 3
-        while candidate == 3: #Consider 3 as a special case
-            if(compnum%candidate == 0):
-                pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-            else:
-                candidate += 2 #Now candidate equals 5
-        while candidate == 5: #Consider 5 as a special case
-            if(compnum%candidate == 0):
-                pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-            else:
-                candidate += 2 #Now candidate equals 7
+        while compnum%candidate == 0:  #Candidate = 2, consider it as a special case
+            pfactors.append(candidate)
+            compnum /= candidate
+            max_candidate =int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
+        candidate += 1 #Now candidate equals 3
+        while compnum%candidate == 0: 
+            pfactors.append(candidate)
+            compnum /= candidate
+            max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
+        candidate += 2 #Now candidate equals 5
+        while compnum%candidate == 0: 
+            pfactors.append(candidate)
+            compnum /= candidate
+            max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
+        candidate += 2 #Now candidate equals 7
 #----MAIN LOOP----
         while candidate <= max_candidate: 
             while compnum%candidate == 0: # For candidates ending in 7
