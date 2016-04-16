@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 1.3.3
+#Version 1.3.4
 
 import sys
 import time
@@ -13,6 +13,7 @@ import math
 #import pdb
 
 factors=[] #List of found factors of number
+candidate=2 #Default value for the first candidate factor
 
 #Parameters: num.- An integer 
 #            factors.- A list of integers
@@ -31,9 +32,8 @@ def validate_factors(num,factors):
 #Parameters: num.- An integer to factorize
 #Return value.- the list of factors
 #The core functionality of program, finds the prime factors of compnum
-def factorize(compnum):
+def factorize(compnum,candidate=2):
     max_candidate=int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-    candidate=2 #Candidate to be a factor of num
     pfactors=[] #List of found factors of number
     signal.signal(signal.SIGUSR1,signal_show_current_status) #Sets the handler for the signal SIGUSR1
     try:
@@ -92,6 +92,7 @@ def parse_arguments():
     #Next one is actually optional, just in case we are running the test batch
     parser.add_argument("num", nargs="?", default=1, help="Integer number to factor", type=int)
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
+    parser.add_argument("-c", "--candi1", help="First candidate to start factoring the number", type=int)
     disjunt.add_argument("--addtest", metavar="FILE",  help="Adds the results of factoring this number, as a test case, to the file specified")
     disjunt.add_argument("--runtest", metavar="FILE", help="Run the test cases")
     return(parser.parse_args()) 
@@ -162,39 +163,43 @@ arguments=parse_arguments()
 if arguments.num < 1:
     print "The number to factor must be a positive integer"
     exit(-4)
-if arguments.addtest:#If we are adding a new test case 
-    test_cases=read_test_cases(arguments.addtest) #Load or create a dictionary of test cases
-    if str(arguments.num) in test_cases: #If the test case already exists, say so and exit
-        print "Test case",arguments.num,"already present:",arguments.num,"=",test_cases[str(arguments.num)]
-        exit(2)
-elif arguments.runtest: #If running the test cases
+if arguments.candi1:
+    if arguments.candi1 >= 2:
+        candidate=arguments.candi1
+    else:
+        print "The first posible candidate muste be at least 2"
+        exit(-5)
+if arguments.runtest: #If running the test cases
     run_test_cases(arguments.runtest)
-    exit(1) #If we are running test the program ends here
-
-#Not running test, so we continue 
-
-t_start=time.time()
-try:
-    factors=factorize(arguments.num)
-except KeyboardInterrupt:
-    t_end=time.time()
-    print "Time used",round(t_end-t_start,4),"seconds"
-    exit(3)
-t_end=time.time()
-
-if len(factors)== 1 or validate_factors(arguments.num,factors): #If there's only one factor or they multiply to the orignal number
-    print "Factors of",arguments.num,"=",factors,
-    if arguments.verbose: print "In",round(t_end-t_start,4),"seconds"
-    if arguments.addtest:#Save the test case if requested and it has not been saved before
-        test_cases[arguments.num]=factors
-        try:
-            f_out=open(arguments.addtest,"w")
-        except:
-            print "Could not open file",arguments.addtest,"to write"
-            exit(-3)
-        f_out.write(json.dumps(test_cases))
-        f_out.close()
-    exit(0)
 else:
-    print "The result is wrong, multiplying",factors,"doesn't yield",arguments.num
-    exit(-1)
+    if arguments.addtest:#Save the test case if requested and it has not been saved before
+        test_cases=read_test_cases(arguments.addtest) #Load or create a dictionary of test cases
+        if str(arguments.num) in test_cases: #If the test case already exists, say so and exit
+            print "Test case",arguments.num,"already present:",arguments.num,"=",test_cases[str(arguments.num)]
+            exit(2)
+    t_start=time.time()
+    try:
+        factors=factorize(arguments.num,candidate)
+    except KeyboardInterrupt:
+        t_end=time.time()
+        print "Time used",round(t_end-t_start,4),"seconds"
+        exit(3)
+    t_end=time.time()
+
+    if len(factors)== 1 or validate_factors(arguments.num,factors): #If there's only one factor or they multiply to the orignal number
+        print "Factors of",arguments.num,"=",factors,
+        if arguments.verbose: print "In",round(t_end-t_start,4),"seconds"
+        if arguments.addtest:#Save the test case 
+            test_cases[arguments.num]=factors
+            try:
+                f_out=open(arguments.addtest,"w")
+            except:
+                print "Could not open file",arguments.addtest,"to write"
+                f_out.close()
+                exit(-3)
+            f_out.write(json.dumps(test_cases))
+            f_out.close()
+        exit(0)
+    else:
+        print "The result is wrong, multiplying",factors,"doesn't yield",arguments.num
+        exit(-1)
