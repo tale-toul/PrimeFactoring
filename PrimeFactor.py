@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 1.3.1
+#Version 1.3.2
 
 import sys
 import time
@@ -10,7 +10,9 @@ import json
 import signal
 import inspect
 import math
-#import pdb
+import gmpy2
+from gmpy2 import mpz
+#import pdb #To activate the debugger
 
 factors=[] #List of found factors of number
 
@@ -32,55 +34,66 @@ def validate_factors(num,factors):
 #Return value.- the list of factors
 #The core functionality of program, finds the prime factors of compnum
 def factorize(compnum):
-    max_candidate=int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-    candidate=2 #Candidate to be a factor of num
+    mp_compnum=mpz(compnum) #Multiprecition number to factor
+    max_candidate= mpz(gmpy2.rint_ceil(gmpy2.sqrt(mp_compnum))) #Square root of the number to factor
+    candidate=mpz(2) #Candidate to be a factor of num
+    quotient=mpz()
+    remainder=mpz()
     pfactors=[] #List of found factors of number
     signal.signal(signal.SIGUSR1,signal_show_current_status) #Sets the handler for the signal SIGUSR1
     try:
         while candidate == 2: #Consider 2 as a special case
-            if(compnum%candidate == 0):
+            if(mp_compnum%candidate == 0):
                 pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate =int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
+                mp_compnum /= candidate
+                max_candidate = mpz(math.ceil(math.sqrt(mp_compnum))) #Square root of the number to factor
             else:
                 candidate += 1 #Now candidate equals 3
         while candidate == 3: #Consider 3 as a special case
-            if(compnum%candidate == 0):
+            if(mp_compnum%candidate == 0):
                 pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
+                mp_compnum /= candidate
+                max_candidate = mpz(math.ceil(math.sqrt(mp_compnum))) #Square root of the number to factor
             else:
                 candidate += 2 #Now candidate equals 5
         while candidate == 5: #Consider 5 as a special case
-            if(compnum%candidate == 0):
+            if(mp_compnum%candidate == 0):
                 pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
+                mp_compnum /= candidate
+                max_candidate = mpz(math.ceil(math.sqrt(mp_compnum))) #Square root of the number to factor
             else:
                 candidate += 2 #Now candidate equals 7
 #----MAIN LOOP----
         while candidate <= max_candidate: 
-            while compnum%candidate == 0: # For candidates ending in 7
+            (quotient,remainder)=gmpy2.t_divmod(mp_compnum,candidate)
+            while remainder == 0: # For candidates ending in 7
                 pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
+                mp_compnum = quotient
+                max_candidate = mpz(gmpy2.rint_ceil(gmpy2.sqrt(mp_compnum))) #Square root of the number to factor
+                (quotient,remainder)=gmpy2.t_divmod(mp_compnum,candidate)
             candidate += 2 #Only check for odd numbers, even numbers cannot be primes
-            while compnum%candidate == 0: #For candidates ending in 9
+            (quotient,remainder)=gmpy2.t_divmod(mp_compnum,candidate)
+            while remainder == 0: #For candidates ending in 9
                 pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
+                mp_compnum = quotient
+                max_candidate = mpz(gmpy2.rint_ceil(gmpy2.sqrt(mp_compnum))) #Square root of the number to factor
+                (quotient,remainder)=gmpy2.t_divmod(mp_compnum,candidate)
             candidate += 2
-            while compnum%candidate == 0: #For candidates ending in 1
+            (quotient,remainder)=gmpy2.t_divmod(mp_compnum,candidate)
+            while remainder == 0: #For candidates ending in 1
                 pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
+                mp_compnum = quotient
+                max_candidate = mpz(gmpy2.rint_ceil(gmpy2.sqrt(mp_compnum))) #Square root of the number to factor
+                (quotient,remainder)=gmpy2.t_divmod(mp_compnum,candidate)
             candidate += 2
-            while compnum%candidate == 0: #For candidates ending in 3
+            (quotient,remainder)=gmpy2.t_divmod(mp_compnum,candidate)
+            while remainder == 0: #For candidates ending in 3
                 pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
+                mp_compnum = quotient
+                max_candidate = mpz(gmpy2.rint_ceil(gmpy2.sqrt(mp_compnum))) #Square root of the number to factor
+                (quotient,remainder)=gmpy2.t_divmod(mp_compnum,candidate)
             candidate += 4
-        if compnum != 1: pfactors.append(compnum) 
+        if mp_compnum != 1: pfactors.append(mp_compnum) 
         signal.signal(signal.SIGUSR1,signal.SIG_DFL) #Sets the handler to its default state
         return pfactors #In the end at least pfactors contains compnum
     except KeyboardInterrupt:
