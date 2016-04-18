@@ -915,3 +915,64 @@ Nivel no superado.  En este nivel el tiempo se ha disparado a casi dos horas, y 
 tanto se considera no superado.
 
 
+
+FACTORIZACION POR SECTORES
+
+La siguiente modificación que haremos en el programa no está directamente relacionada con
+una mejora en el rendimiento, por el contrario supondrá una ligerisima perdida del mismo.
+
+Se trate de añadir un parametro al programa que nos permita indicar el candidato a partir
+del cual queremos empezar a probar en la busqueda de factores.  Hasta ahora el programa
+siempre empieza probando candidatos a partir del 2, pero con esta opción podremos empezar
+a probar en cualquier número entero arbitrario mayor o igual que 2.
+
+La idea es simple, indico en la linea de comandos el candidato a partir del que quiero
+empezar a buscar factores, por ejemplo:
+
+ $./PrimeFactor.py -v 332621 -c 501
+
+Implementar esta idea es, sin embargo, algo más complejo de lo que en un principio parece.
+La función factorize esta inicialmente diseñada para empezar con el 2 como primer
+candidato y a partir de ahí probar los siguientes en orden, de esta manera se prueba el 2,
+el 3, el 5, y a partir de ahí todos los números que acaben en 7, 9, 1 y 3.  Puesto que
+ahora el primer candidato puede ser cualquier número hay que modificar sustancialmente la
+lógica:
+
+-Se mantiene la idea de probar solo números que pueden ser factores primos, es decir no
+ probaremos números terminados en cifra par, ni terminados en 5.  Si un número es
+ divisible por 2 y tambien por 8, pero el candidato inicial es 5, ni el 2 ni el 8
+ aparecerán como factores, puesto que el 2 es menor que el primer candidato y el 8 queda
+ excluido por diseño del programa.  
+
+-Si el candidato inicial es menor o igual a 5, la lógica no cambia tanto, comprobamos
+ en cada paso el valor del candidato: primero si es igual a 2, luego si es igual a 3,
+ luego 4 y por último 5; de esta manera sea cual sea el valor inicial del candidato, el
+ programa empezará a ejecutarse en el punto correcto.  Mención especial merece la
+ condición en que el candidato inicial es 4, en este caso simplemente saltamos al
+ siguiente valor (5) sin hacer nada.
+
+-Si el valor del candidato inicial es mayor que 5, la función debe empezar a ejecutarse
+ directamente en el bucle principal, y dependiendo de la cifra final del candidato los
+ pasos se darán de una forma u otra. En la función original el bucle estaba pensado para
+ que la primera vez que se entrara el número acabará en 7, luego se sumaban +2 y el
+ siguiente candidato acababa en 9, depues se sumanban +2 y el siguiente candidatos acababa
+ en 1, despues se sumaban +2 y el siguiente candidato acababa en 3, y finalmente se
+ sumanban +4 y el siguiente candidato acababa de nuevo en 7 y empezaba de nuevo el bucle.
+ Los incrementos seguían un patron fijo: +2,+2,+2,+4.  Pero con la nueva versión de la
+ función si el primer candidato termina en un número distinto a 7 puede que el patron de
+ incremnetos cambie.  Para solucionar este problema se define un diccionario que tendrá
+ como clave la última cifra del candidato que entra en el bucle por primera vez y como
+ valor una lisa con los incrementos en el orden correcto en que se deben ejecutar.  Según
+ la cifra en que termine el candidato inicial se seleccionará una lista de incrementos u
+ otra, por ejemplo si el candidato inicial termina en 3, los incrementos serán: (3) +4 (7)
+ +2 (9) +2 (1) +2 (3) ó [4,2,2,2].  Ahora el incremento que se aplica, en lugar de una
+ constante, es el contenido de una lista (candidate += increment[1]) esto es lo que hace
+ que el programa se ralentice un poco con respecto al uso de una constante.
+
+-También hay que tener en cuenta que el valor del candidato inicial pueda terminar en una
+ cifra par o en 5, en cuyo caso debemos incrementar el valor del candidato hasta el
+ siguiente número que termine en 1,3,7 ó 9, que son los únicos finales de candidatos
+ válidos.  Esto se consigue con un bucle if que comprueba la cifra final del candidato, y
+ si termina en alguno de las cifras "prohibidas" lo actualiza hasta el siguiente número
+ válido.  Si por el contrario usa una terminación válida no hace nada.
+

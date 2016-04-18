@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 1.3.4
+#Version 1.3.5
 
 import sys
 import time
@@ -30,50 +30,74 @@ def validate_factors(num,factors):
         return False
 
 #Parameters: num.- An integer to factorize
+#           candidate.- The first candidate to start looking for factors
 #Return value.- the list of factors
 #The core functionality of program, finds the prime factors of compnum
 def factorize(compnum,candidate=2):
+    increments_dict={'7':[2,2,2,4],
+                     '9':[2,2,4,2],
+                     '1':[2,4,2,2],
+                     '3':[4,2,2,2]}
+    increment=increments_dict['7'] #By default the 7 increment list is used
     max_candidate=int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
     pfactors=[] #List of found factors of number
+    if candidate > 5:
+        text_candidate_last=str(candidate)[-1]
+#Place the candidate in the correct position; if the candidate ends in 7, 9, 1 or 3 do nothing
+        if text_candidate_last == '4' or text_candidate_last == '5' or text_candidate_last == '6':
+            text_candidate_last='7' #Bring it up to next number ending in 7
+        elif text_candidate_last == '8':
+            text_candidate_last='9' #Bring it up to next number ending in 9
+        elif text_candidate_last == '0':
+            text_candidate_last='1' #Bring it up to next number ending in 1
+        elif text_candidate_last == '2':
+            text_candidate_last='3' #Bring it up to next number ending in 3
+        candidate =int(str(candidate)[:-1]+text_candidate_last) #Add the new ending 
+#Now use the correct increment list
+        increment=increments_dict[text_candidate_last]
     signal.signal(signal.SIGUSR1,signal_show_current_status) #Sets the handler for the signal SIGUSR1
     try:
-        while compnum%candidate == 0:  #Candidate = 2, consider it as a special case
-            pfactors.append(candidate)
-            compnum /= candidate
-            max_candidate =int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-        candidate += 1 #Now candidate equals 3
-        while compnum%candidate == 0: 
-            pfactors.append(candidate)
-            compnum /= candidate
-            max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-        candidate += 2 #Now candidate equals 5
-        while compnum%candidate == 0: 
-            pfactors.append(candidate)
-            compnum /= candidate
-            max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-        candidate += 2 #Now candidate equals 7
+        if candidate == 2: #This condition is here because the initial value of candidate may be different from 2
+            while compnum%candidate == 0:  #Candidate = 2, consider it as a special case
+                pfactors.append(candidate)
+                compnum /= candidate
+                max_candidate =int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
+            candidate += 1 #Now candidate equals 3
+        if candidate == 3: #This condition is here because the initial value of candidate may be different from 2
+            while compnum%candidate == 0: 
+                pfactors.append(candidate)
+                compnum /= candidate
+                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
+            candidate += 2 #Now candidate equals 5
+        if candidate ==4: candidate =5 #Upgrade to the next meaninful candidate
+        if candidate == 5: #This condition is here because the initial value of candidate may be different from 2
+            while compnum%candidate == 0: 
+                pfactors.append(candidate)
+                compnum /= candidate
+                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
+            candidate += 2 #Now candidate equals 7
 #----MAIN LOOP----
         while candidate <= max_candidate: 
             while compnum%candidate == 0: # For candidates ending in 7
                 pfactors.append(candidate)
                 compnum /= candidate
                 max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-            candidate += 2 #Only check for odd numbers, even numbers cannot be primes
+            candidate += increment[0] #This increment depends on the incremnet list selected bejore
             while compnum%candidate == 0: #For candidates ending in 9
                 pfactors.append(candidate)
                 compnum /= candidate
                 max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-            candidate += 2
+            candidate += increment[1] #This increment depends on the incremnet list selected bejore
             while compnum%candidate == 0: #For candidates ending in 1
                 pfactors.append(candidate)
                 compnum /= candidate
                 max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-            candidate += 2
+            candidate += increment[2] #This increment depends on the incremnet list selected bejore
             while compnum%candidate == 0: #For candidates ending in 3
                 pfactors.append(candidate)
                 compnum /= candidate
                 max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-            candidate += 4
+            candidate += increment[3] #This increment depends on the incremnet list selected bejore
         if compnum != 1: pfactors.append(compnum) 
         signal.signal(signal.SIGUSR1,signal.SIG_DFL) #Sets the handler to its default state
         return pfactors #In the end at least pfactors contains compnum
@@ -82,6 +106,18 @@ def factorize(compnum,candidate=2):
         print "Factors found so far:",pfactors
         print "Last candidate:",candidate
         raise
+
+
+
+#Parameters: num.- An integer to factorize
+#           first_candidate.- The first candidate to start looking for factors
+#           last_candidate.- The last candidate to try
+#Return value.- the list of factors
+#The core functionality of program, finds the prime factors of compnum
+#@Watch out, since the starting candidate might not be 2 any more, the structure of the
+#loops is not valid any more@#
+#######################WIP##################
+#def factorize_with_limits(compnum,first_candidate=2,last_candidate=2):
 
 #Parameters: none
 #Return value: the arguments found in the command line
@@ -163,11 +199,11 @@ arguments=parse_arguments()
 if arguments.num < 1:
     print "The number to factor must be a positive integer"
     exit(-4)
-if arguments.candi1:
+if arguments.candi1 is not None:
     if arguments.candi1 >= 2:
         candidate=arguments.candi1
     else:
-        print "The first posible candidate muste be at least 2"
+        print "The first posible candidate muste be at least 2, you entered",arguments.candi1 
         exit(-5)
 if arguments.runtest: #If running the test cases
     run_test_cases(arguments.runtest)
