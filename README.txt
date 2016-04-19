@@ -918,13 +918,16 @@ tanto se considera no superado.
 
 FACTORIZACION POR SECTORES
 
-La siguiente modificación que haremos en el programa no está directamente relacionada con
+
+Candidato incial
+
+La siguiente modificación que hacemos en el programa no está directamente relacionada con
 una mejora en el rendimiento, por el contrario supondrá una ligerisima perdida del mismo.
 
-Se trate de añadir un parametro al programa que nos permita indicar el candidato a partir
-del cual queremos empezar a probar en la busqueda de factores.  Hasta ahora el programa
-siempre empieza probando candidatos a partir del 2, pero con esta opción podremos empezar
-a probar en cualquier número entero arbitrario mayor o igual que 2.
+Se trata de añadir un parámetro que nos permita indicar el candidato a partir del cual
+queremos empezar a probar en la busqueda de factores.  Hasta ahora el programa siempre
+empezaba probando candidatos a partir del 2, pero con esta opción podremos empezar a
+probar en cualquier número entero arbitrario mayor o igual que 2.
 
 La idea es simple, indico en la linea de comandos el candidato a partir del que quiero
 empezar a buscar factores, por ejemplo:
@@ -932,9 +935,10 @@ empezar a buscar factores, por ejemplo:
  $./PrimeFactor.py -v 332621 -c 501
 
 Implementar esta idea es, sin embargo, algo más complejo de lo que en un principio parece.
-La función factorize esta inicialmente diseñada para empezar con el 2 como primer
-candidato y a partir de ahí probar los siguientes en orden, de esta manera se prueba el 2,
-el 3, el 5, y a partir de ahí todos los números que acaben en 7, 9, 1 y 3.  Puesto que
+La función "factorize" esta inicialmente diseñada para empezar con el 2 como primer
+candidato y a partir de ahí probar los siguientes en orden, de esta manera se prueba el
+2, el 3, el 5, y a partir de ahí todos los números que acaben en 7, 9, 1 y 3, saltando
+todos los números pares y terminados en 5, que no pueden ser factores primos.  Puesto que
 ahora el primer candidato puede ser cualquier número hay que modificar sustancialmente la
 lógica:
 
@@ -942,7 +946,7 @@ lógica:
  probaremos números terminados en cifra par, ni terminados en 5.  Si un número es
  divisible por 2 y tambien por 8, pero el candidato inicial es 5, ni el 2 ni el 8
  aparecerán como factores, puesto que el 2 es menor que el primer candidato y el 8 queda
- excluido por diseño del programa.  
+ excluido por ser número par.  
 
 -Si el candidato inicial es menor o igual a 5, la lógica no cambia tanto, comprobamos
  en cada paso el valor del candidato: primero si es igual a 2, luego si es igual a 3,
@@ -954,25 +958,70 @@ lógica:
 -Si el valor del candidato inicial es mayor que 5, la función debe empezar a ejecutarse
  directamente en el bucle principal, y dependiendo de la cifra final del candidato los
  pasos se darán de una forma u otra. En la función original el bucle estaba pensado para
- que la primera vez que se entrara el número acabará en 7, luego se sumaban +2 y el
- siguiente candidato acababa en 9, depues se sumanban +2 y el siguiente candidatos acababa
- en 1, despues se sumaban +2 y el siguiente candidato acababa en 3, y finalmente se
- sumanban +4 y el siguiente candidato acababa de nuevo en 7 y empezaba de nuevo el bucle.
- Los incrementos seguían un patron fijo: +2,+2,+2,+4.  Pero con la nueva versión de la
- función si el primer candidato termina en un número distinto a 7 puede que el patron de
- incremnetos cambie.  Para solucionar este problema se define un diccionario que tendrá
- como clave la última cifra del candidato que entra en el bucle por primera vez y como
- valor una lisa con los incrementos en el orden correcto en que se deben ejecutar.  Según
- la cifra en que termine el candidato inicial se seleccionará una lista de incrementos u
- otra, por ejemplo si el candidato inicial termina en 3, los incrementos serán: (3) +4 (7)
- +2 (9) +2 (1) +2 (3) ó [4,2,2,2].  Ahora el incremento que se aplica, en lugar de una
- constante, es el contenido de una lista (candidate += increment[1]) esto es lo que hace
- que el programa se ralentice un poco con respecto al uso de una constante.
+ que la primera vez que se entrara en el bucle principal, el número acabará en 7, después
+ de tratar este candidato se sumaban +2 y el siguiente candidato acababa en 9, depues se
+ sumanban +2 y el siguiente candidatos acababa en 1, despues se sumaban +2 y el siguiente
+ candidato acababa en 3, y finalmente se sumanban +4 y el siguiente candidato acababa de
+ nuevo en 7 y empezaba de nuevo el bucle.  Los incrementos seguían un patron fijo:
+ +2,+2,+2,+4.  Pero con la nueva versión de la función si el primer candidato termina en
+ un número distinto a 7 el patron de incremnetos cambia.  Para solucionar este problema
+ se define un diccionario que tendrá como clave la última cifra del candidato que entra
+ en el bucle por primera vez y como valor una lisa con los incrementos en el orden
+ correcto en que se deben ejecutar.  Según la cifra en que termine el candidato inicial
+ se seleccionará una lista de incrementos u otra, por ejemplo si el candidato inicial
+ termina en 3, los incrementos serán: (3) +4 (7) +2 (9) +2 (1) +2 (3) ó [4,2,2,2].  Ahora
+ el incremento que se aplica, en lugar de una constante, es un valor de una lista
+ (candidate += increment[1]) esto es lo que hace que el programa se ralentice un poco con
+ respecto al uso de una constante. He probado a usar una "tuple" en lugar de una lista
+ pero esto ralentiza aun más el programa.
 
 -También hay que tener en cuenta que el valor del candidato inicial pueda terminar en una
  cifra par o en 5, en cuyo caso debemos incrementar el valor del candidato hasta el
  siguiente número que termine en 1,3,7 ó 9, que son los únicos finales de candidatos
- válidos.  Esto se consigue con un bucle if que comprueba la cifra final del candidato, y
+ válidos.  Esto se consigue con un bucle if que comprueba la cifra final del candidato, 
  si termina en alguno de las cifras "prohibidas" lo actualiza hasta el siguiente número
  válido.  Si por el contrario usa una terminación válida no hace nada.
+
+
+Candidato final
+
+Otra mejora en la aplicación es la posbilidad de indicar el candidato final hasta el que
+queremos buscar factores.  Añadimos la posibilidad de usar un argumento de linea de
+comandos para asignar el valor máximo que puede tener el candidato en la busqueda de
+factores del número.  Esta opción del programa resulta ser sencilla de implementar.
+
+Con esta opción los candidatos se hirán probando hasta que el candidato sea mayor que el
+candidato máximo posible, como hasta ahora, con la diferencia que este máximo pude ser
+uno de dos valores posible:
+
+-La raiz cuadrada del número a factorizar
+-El candidato máximo indicado en linea de comandos
+
+Usaremos el menor de los dos valores anteriores.
+
+El candidato final debería ser mayor que el candidato inicial, sin embargo no lo
+comprobamos explicitamente, la lógica del programa hace que si el candidato final es
+menor que el inicial, la factorización termine inmediatamente. Salvo en el extraño caso
+en que el primer y último candidato sean menor que 5, en cuyo caso si se podria probar
+alguno de los candidatos menores, por ejemplo:  
+
+    $./PrimeFactor.py -v 64795512344765945 -c 4 -l 2
+    Factors of 64795512344765945 = [5, 12959102468953189] In 0.0 seconds
+
+
+Factores NO primos
+
+Al poder seleccionar un segmento arbitrario dentro del cual buscar los factores del número,
+no podemos garantizar que los factores encontrados sean números primos, ya que no hemos
+probado todos los candidatos desde el inicio, o sea a partir del 2.  Es completamente
+posible que uno o más de los factores encontrados dentro del segmento de candidatos sean
+números compuestos, que son factores del número inicial pero no son números primos.  Por
+ejemplo:
+
+    $ ./PrimeFactor.py -v 3644792236778694 -c 120 
+    Factors of 3644792236778694 = [303, 42473, 283215626] In 0.0036 seconds
+
+El número 303 es un factor pero no es primo, es divible entre 3, que, este sí, es un
+factor primo del número original.
+
 
