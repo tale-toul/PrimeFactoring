@@ -1025,3 +1025,13 @@ El número 303 es un factor pero no es primo, es divible entre 3, que, este sí,
 factor primo del número original.
 
 
+
+MEJORA EN EL HARDWARE
+
+En la última modificación al programa no se consiguio ninguna mejora en la velocidad, si
+acaso un ligero empeoramiento.  Vamos a aplicar una mejora, que esta vez no implia tocar
+el código.
+
+Hasta ahora estabamos utilizando como plataforma hardware un Raspberry Pi modelo B, ahora
+vamos a pasar a utilizar un Raspberry Pi 3 modelo B.  Esperamos que haya una mejora en el
+rendimiento, veremos de qué magnitud.
