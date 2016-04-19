@@ -1035,3 +1035,40 @@ el código.
 Hasta ahora estabamos utilizando como plataforma hardware un Raspberry Pi modelo B, ahora
 vamos a pasar a utilizar un Raspberry Pi 3 modelo B.  Esperamos que haya una mejora en el
 rendimiento, veremos de qué magnitud.
+
+
+Pruebas en el RPi 3
+
+-Nivel 16
+ 1-Número compuesto múltiple
+    3644792236778694 = [2, 3, 101, 42473, 141607813L] In 0.027 seconds
+ 2-Número compuesto por dos primos
+    3849788417036503 = [59423701, 64785403L] In 39.324 seconds
+ 3-Número primo
+    5332147896211517 = [5332147896211517L] In 49.0334 seconds
+
+Nivel batido. Vemos que se ha reducido el tiempo a una cuarta parte del que teníamos con el anterior hardware
+
+-Nivel 17
+ 1-Número compuesto múltiple
+    64795512344765945 = [5, 31, 83, 157, 653, 49127233L] In 0.0039 seconds
+ 2-Número compuesto por dos primos
+    32563672784171761 = [67894373, 479622557L] In 45.8701 seconds    
+ 3-Número primo
+    55641397544639089 = [55641397544639089L] In 158.3416 seconds    
+
+Nivel batido.
+
+
+-Nivel 18
+
+ 1-Número compuesto múltiple
+    954788612384655179 = [53077, 118429, 151894763L] In 0.0768 seconds
+
+ 2-Número compuesto por dos primos
+    498542964342543929 = [652231511, 764365039L] In 452.1801 seconds
+    
+ 3-Número primo
+    546698741123646019 = [546698741123646019L] In 507.4415 seconds    
+
+Nivel batido.  Igual que en los anteriores el tiempo se reduce aproximadamente a un cuarto
