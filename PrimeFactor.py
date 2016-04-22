@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 1.3.5
+#Version 1.3.6
 
 import sys
 import time
@@ -119,8 +119,7 @@ def factorize_with_limits(compnum,candidate=2,last_candidate=2):
                      '1':[2,4,2,2],
                      '3':[4,2,2,2]}
     increment=increments_dict['7'] #By default the 7 increment list is used
-    max_candidate=int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-    if last_candidate < max_candidate: max_candidate = last_candidate 
+    max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
     pfactors=[] #List of found factors 
     if candidate > 5:
         text_candidate_last=str(candidate)[-1]
@@ -142,49 +141,42 @@ def factorize_with_limits(compnum,candidate=2,last_candidate=2):
             while compnum%candidate == 0:  #Candidate = 2, consider it as a special case
                 pfactors.append(candidate)
                 compnum /= candidate
-                max_candidate =int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-                if last_candidate < max_candidate: max_candidate = last_candidate 
+                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
             candidate += 1 #Now candidate equals 3
         if candidate == 3: #This condition is here because the initial value of candidate may be different from 2
             while compnum%candidate == 0: 
                 pfactors.append(candidate)
                 compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-                if last_candidate < max_candidate: max_candidate = last_candidate 
+                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
             candidate += 2 #Now candidate equals 5
         if candidate ==4: candidate =5 #Upgrade to the next meaninful candidate
         if candidate == 5: #This condition is here because the initial value of candidate may be different from 2
             while compnum%candidate == 0: 
                 pfactors.append(candidate)
                 compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-                if last_candidate < max_candidate: max_candidate = last_candidate 
+                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
             candidate += 2 #Now candidate equals 7
 #----MAIN LOOP----
         while candidate <= max_candidate: 
             while compnum%candidate == 0: # For candidates ending in 7
                 pfactors.append(candidate)
                 compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-                if last_candidate < max_candidate: max_candidate = last_candidate 
+                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
             candidate += increment[0] #This increment depends on the incremnet list selected bejore
             while compnum%candidate == 0: #For candidates ending in 9
                 pfactors.append(candidate)
                 compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-                if last_candidate < max_candidate: max_candidate = last_candidate 
+                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
             candidate += increment[1] #This increment depends on the incremnet list selected bejore
             while compnum%candidate == 0: #For candidates ending in 1
                 pfactors.append(candidate)
                 compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-                if last_candidate < max_candidate: max_candidate = last_candidate 
+                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
             candidate += increment[2] #This increment depends on the incremnet list selected bejore
             while compnum%candidate == 0: #For candidates ending in 3
                 pfactors.append(candidate)
                 compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-                if last_candidate < max_candidate: max_candidate = last_candidate 
+                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
             candidate += increment[3] #This increment depends on the incremnet list selected bejore
         if compnum != 1: pfactors.append(compnum) 
         signal.signal(signal.SIGUSR1,signal.SIG_DFL) #Sets the handler to its default state
