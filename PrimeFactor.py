@@ -10,6 +10,7 @@ import json
 import signal
 import inspect
 import math
+import multiprocessing
 #import pdb
 
 factors=[] #List of found factors of number
@@ -272,6 +273,76 @@ def signal_show_current_status(signum,stack):
    print "\tTime used:", round(t_so_far-t_start,3),"seconds"
 
 
+#Parameters: number_of_segments.- The number of divisions to make
+#           bottom.- first number to start looking for factors
+#           top.- last number to look for factors
+#Return value.- A list of tuples with the starting and ending number of every segment
+def get_problem_segments(bottom,top,number_of_segments):
+    '''Divide the problem into different segments'''
+    segments=list()
+    start_of_segment=bottom
+    segment_size=int(math.ceil((top-bottom) / float(number_of_segments)))
+    for x in range(number_of_segments):
+        end_of_segment=start_of_segment+segment_size
+        one_segment=(start_of_segment,end_of_segment)
+        segments.append(one_segment)
+        start_of_segment=end_of_segment+1
+    return segments
+
+#Parameters: results_to_clean.- list of lists with the results returned by the factoring
+#                               of the different segments
+#Return value: the list of prime factors with respect to this results
+def clean_results(results_to_clean):
+    '''Removes the composite numbers and leaves only the prime numbers from the result
+    set given.  This is not always possible, specially if the first reslt segment has
+    composite numbers'''
+    clean_factors=list()
+    first_result=True
+    last_result=results_to_clean[-1][-1]
+    for result_tranche in results_to_clean:
+        if len(result_tranche) == 1: pass #No factors in this tranche, carry on
+        else: #There are possible prime factors in this tranche
+            last_result=result_tranche[-1]
+            if first_result:
+                first_result=False
+                clean_factors += result_tranche[:-1]
+            else:#Not the first tranche with more than 1 factor
+                for possible_prime in result_tranche[:-1]:
+                    is_prime=True
+                    for factor in clean_factors:
+                        if possible_prime%factor == 0:
+                            is_prime=False
+                            break
+                    if is_prime: clean_factors.append(possible_prime)
+    #@Turn this block (before and after) into a function
+    is_prime=True
+    for factor in clean_factors:
+        if last_result%factor == 0:
+            is_prime=False
+            break
+    if is_prime: clean_factors.append(last_result)
+    return clean_factors
+                    
+
+
+
+#Parameters: num_to_factor.- The number to factor
+#            bottom.-First number of the set to start looking for factors
+#            top.- Last number of the set to look for factors
+def factor_broker(num_to_factor,bottom,top):
+    '''Manages the multiprocessing solution to the factoring problem'''
+    segments=list() #List of segments to scan for factors
+    results_dirty=list() #A list of lists with the results of every segment
+    num_cpus=multiprocessing.cpu_count()
+    max_candidate=int(math.ceil(math.sqrt(num_to_factor))) #Square root of the number to factor
+    top=min(top,max_candidate) #@Apply this to the factorize function@#
+    segments=get_problem_segments(bottom,top,num_cpus)
+    print "segments",segments
+    for i in segments:
+        results_dirty.append(factorize_with_limits(num_to_factor,i[0],i[1]))
+    print results_dirty
+    return clean_results(results_dirty)
+    
 #####MAIN#######
 
 #pdb.set_trace()  #Uncomment to debug
@@ -304,7 +375,8 @@ else: #Not running tests
             exit(2)
     t_start=time.time()
     try:
-        factors=factorize_with_limits(arguments.num,arguments.firstcandi,arguments.lastcandi)
+        #factors=factorize_with_limits(arguments.num,arguments.firstcandi,arguments.lastcandi)
+        factors=factor_broker(arguments.num,arguments.firstcandi,arguments.lastcandi)
     except KeyboardInterrupt:
         t_end=time.time()
         print "Time used",round(t_end-t_start,4),"seconds"
