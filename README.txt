@@ -1072,3 +1072,24 @@ Nivel batido.
     546698741123646019 = [546698741123646019L] In 507.4415 seconds    
 
 Nivel batido.  Igual que en los anteriores el tiempo se reduce aproximadamente a un cuarto
+
+-Nivel 19
+ 1-Número compuesto múltiple
+    3689445781236985154 = [2, 7, 11, 37, 121267, 5339444219L] In 0.0827 seconds
+ 2-Número compuesto por dos primos
+    2537675226119470571 = [548997653, 4622379007L] In 384.9777 seconds
+ 3-Número primo
+    5977455832169755667 = [5977455832169755667L] In 1825.4157 seconds. (media hora aproximadamente)
+
+Nivel batido. Hemos conseguido batir este nivel, al reducir casi 1/4 el tiempo
+que se necesito con el anterior hardware. Sin embargo es evidente que no
+seremos capaces de superar el siguiente nivel.
+
+ 
+
+
+
+
+
+
+
