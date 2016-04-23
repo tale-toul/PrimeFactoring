@@ -990,7 +990,7 @@ queremos buscar factores.  Añadimos la posibilidad de usar un argumento de line
 comandos para asignar el valor máximo que puede tener el candidato en la busqueda de
 factores del número.  Esta opción del programa resulta ser sencilla de implementar.
 
-Con esta opción los candidatos se hirán probando hasta que el candidato sea mayor que el
+Con esta opción los candidatos se irán probando hasta que el candidato sea mayor que el
 candidato máximo posible, como hasta ahora, con la diferencia que este máximo pude ser
 uno de dos valores posible:
 
@@ -1087,9 +1087,127 @@ seremos capaces de superar el siguiente nivel.
 
  
 
+DIVIDIENDO EL PROBLEMA EN SEGMENTOS
+
+Versión 2.1.x
+
+Con el nuevo hardware la velocidad del programa ha mejorado mucho, sin embargo aun estamos
+desperdiciando gran parte de la capacidad del hardware.  El programa se ejeucta en una
+sola de las 4 CPUs que tiene el RPi 3, por lo tanto estamos desperdiciando la potencia de
+esas 3 restantes CPUs.
+
+Antes de llegar a ejecutar la factorización en paralelo entre las CPUs del computador voy
+a definir una nueva función (factor_broker) que, en base al espacio del problema y al
+número de CPUs de la máquina, genera una serie de segmentos dentro de los cuales buscaremos
+los factores del número.
+
+El espacio del problema viene delimitado por los enteros que se encuentran entre el
+candidato mínimo y el máximo, estos valores pueden venir de la linea de comandos o ser
+calculados.  Este espacio se divide entre el númeor de CPUs y el valor obtenido y
+redondeado se utiliza para crear los segmentos donde se buscarán los factores.  Por
+ejemplo si el candidato mínimo es 2 y el máximo es 1025, y el número de CPUs es 4:
+
+    1025/4=256.25 => incremento = 257
+
+    Segmento1=(2,259)
+    Segmento2=(260,517)
+    Segmento3=(518,775)
+    Segmento4=(776,1033)
+
+Vemos que el límite superior del último segmento se pasa del valor del candidato máximo,
+sin embargo la diferencia no supondrá apenas perdida de rendimiento, ya que la diferencia
+es muy pequeña.
+
+Una vez que tenemos los segmentos definidos ejecutamos la función que ya teníamos
+factorize_with_limits para buscar factores dentro de ese segmento.
+
+El problema que nos encontramos con esta forma de dividir el problema de factorización es
+que cuando buscamos factores en un segmento distinto del primero, no podemos estar seguros
+que los factores encontrados sean números primos, por debemos filtrar los factores encontrados en
+cada segmento para eliminar los factores compuestos.
+
+Para "limpiar" las listas de factores obtenidas de los distintos segmentos creamos una
+nueva función de factorización (factorize_with_factors) a la que se le pasa el número a
+factorizar y una lista de candidatos, que previamente hemos construido añadiendo todos los
+factores obtenidos en los distintos segmentos.  Se eliminan los duplicados de la lista y
+se ordena, a continuación usamos los elemetos de esa lista como candidatos a factorizar el
+número compuesto.  Puesto que empezamos por los más pequeños, que probablemente son
+primos, cuando lleguemos a otro mayor que esté compuesto por el producto de primos
+anteriroes, el número resultante de la factorización ya no será divisible por este
+candidato compuesto.  Por ejemplo, el número 60 se divide en los siguientes segmentos:
+
+60
+segments [(2, 4), (5, 7), (8, 10), (11, 13)]
+
+Y los factores encontrados en cada segmentos son:
+
+[2, 2, 3, 5],   [5, 12],  [60],   [60]
+
+Cuando volvemos a factorizar el número con los candidatos:
+
+[2, 2, 3, 5, 12]
+
+El 12 no llegaremos ni a probarlo por ser menor que el candidato máximo, que se actualiza
+tras cada factor.
+
+Otro ejemplo: el número 1690
+
+Los segmentos son:
+
+segments [(2, 12), (13, 23), (24, 34), (35, 45)]
+
+Y los factores encontrados en cada segmentos son:
+
+[2, 5, 13, 13],   [13, 13, 10],   [1690],   [1690]
+
+Cuando se prueban de nuevo estos factores, y llegamos al 10, antes hemos dividido el
+número entre 2 y 5, por lo tanto el número resultante cuando llegamos al factor 10, no es
+divisible por éste, y no es considerado como factor válido, aunque sí lo era cuando se
+factorizo en el segmento (13,23)
 
 
+Rendimiento
+
+Este cambio en el funcionamiento del programa implica una caida en el rendimiento del
+programa, que varía según el número que estemos factorizando:
+
+-En el caso de los números de tipo (1) la perdida de rendimiento es enorme, mientras que
+antes por cada factor que encontrabamos el problema de factorización se reducía y
+convergía rapidamente, ahora buscamos factores en todos los segmentos, es decir en todo el
+espacio de candidatos independientemente de si se han encontrado factores en otros
+segmentos anteriores, y esto ralentiza la finalización del programa.
+
+Por ejemplo en el nivel 17 la diferencia entre el tiempo obtenido antes y ahora es de más
+de 2 minutos:
 
 
+-Nivel 17
+ 1-Número compuesto múltiple
+    64795512344765945 = [5, 31, 83, 157, 653, 49127233L] In 0.0039 seconds
+
+    64795512344765945 = [5, 31, 83, 157, 653, 49127233L] In 126.8963 seconds
+
+-En el caso de los números de tipo (2) la perdida de rendimiento es menor, aunque tambien
+es grande.  En este caso solo hay que encontrar un factor y dependiendo del segmento en el
+que se encuentre se ralentizará más o menos la finalización del programa, de nuevo en el
+nivel 17:
+
+-Nivel 17
+ 2-Número compuesto por dos primos
+    32563672784171761 = [67894373, 479622557L] In 45.8701 seconds
+
+    32563672784171761 = [67894373, 479622557L] In 107.6737 seconds
+
+-Los números de tipo (3) son los menos afectados por la pérdida de rendimiento, ya que no
+hay factores y hay que recorrer todo el espacio de candidatos para finalizar el programa,
+una vez más en el nivel 17:
+
+-Nivel 17
+ 3-Número primo
+    55641397544639089 = [55641397544639089L] In 158.3416 seconds
+
+    55641397544639089 = [55641397544639089L] In 160.6151 seconds
 
 
+En sucesivas versiones nos basaremos en el trabajo de esta versión para conseguir mejoras
+en el rendimiento del programa.

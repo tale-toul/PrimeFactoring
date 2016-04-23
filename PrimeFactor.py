@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 2.0.1
+#Version 2.1.0
 
 import sys
 import time
@@ -190,6 +190,28 @@ def factorize_with_limits(compnum,candidate=2,last_candidate=2):
 
 
 
+#Parameters: compnum.- number to factor
+#           possible_factors.- a list of posible factors to try
+#Returns: a list of the found factors within the set provided, hopefully only the prime
+#       factors
+def factorize_with_factors(compnum,possible_factors):
+    '''Since there is no need to look for candidate the funcion is a lot simpler'''
+    max_candidate=int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
+    pfactors=[] #List of found factors
+    #Remove duplicates and order the list in reverse order
+    order_uniq_pfactors=list(set(possible_factors))
+    order_uniq_pfactors.sort(key=int,reverse=True)
+    candidate=order_uniq_pfactors.pop()
+    while candidate <= max_candidate:
+        while compnum%candidate == 0: # For candidates ending in 7
+            pfactors.append(candidate)
+            compnum /= candidate
+            max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
+        if order_uniq_pfactors:
+            candidate=order_uniq_pfactors.pop() #I'm not checking that the list is empty
+    if compnum != 1: pfactors.append(compnum)
+    return pfactors #In the end at least pfactors contains compnum
+
 
 
 #Parameters: none
@@ -282,44 +304,25 @@ def get_problem_segments(bottom,top,number_of_segments):
         start_of_segment=end_of_segment+1
     return segments
 
-#Parameters: num_to_check.- the number to check for divisibiliti
-#           dividers.- the list of possible dividers
-#Return: true if is divisible by any of the dividers, false if it's not
-def is_divisible_by(num_to_check,dividers):
-    '''Checks whether num_to_check is  divisible by any of the numbers in dividers'''
-    is_divisible=False
-    for factor in dividers: #@Should be different factors, remove repeated ones@#
-        if num_to_check%factor == 0 and num_to_check != factor:
-            is_divisible=True
-            break
-    return is_divisible
-
 
 
 #Parameters: results_to_clean.- list of lists with the results returned by the factoring
 #                               of the different segments
+#           num_to_factor.- The number to factor, is needed as a reference to clean up the
+#           factors
 #Return value: the list of prime factors with respect to this results
-def clean_results(results_to_clean):
+def clean_results(results_to_clean,num_to_factor):
     '''Removes the composite numbers and leaves only the prime numbers from the result
-    set given.  This is not always possible, specially if the first reslt segment has
-    composite numbers'''
-    clean_factors=list()
-    first_result=True
-    last_result=results_to_clean[-1][-1]
+    set given.'''
+    wfactors=list()
     for result_tranche in results_to_clean:
         if len(result_tranche) == 1: pass #No factors in this tranche, carry on
         else: #There are possible prime factors in this tranche
-            if first_result:
-                last_result=result_tranche[-1]
-                first_result=False
-                clean_factors += result_tranche[:-1]
-            else:#Not the first tranche with more than 1 factor
-                for possible_prime in result_tranche[:-1]:
-                    if possible_prime > clean_factors[-1] and not is_divisible_by(possible_prime,clean_factors): 
-                            clean_factors.append(possible_prime)
-    if not is_divisible_by(last_result,clean_factors): 
-        clean_factors.append(last_result)
-    return clean_factors
+            wfactors += result_tranche
+    if wfactors:
+        return factorize_with_factors(num_to_factor,wfactors)
+    else:
+        return [num_to_factor]
 
 
 
@@ -327,18 +330,19 @@ def clean_results(results_to_clean):
 #            bottom.-First number of the set to start looking for factors
 #            top.- Last number of the set to look for factors
 def factor_broker(num_to_factor,bottom,top):
-    '''Manages the multiprocessing solution to the factoring problem'''
+    '''Divides the factoring problem in as many equal segments as CPUs are in the computer
+    running the program.  Calls the factorize function for the smaller problems'''
     segments=list() #List of segments to scan for factors
     results_dirty=list() #A list of lists with the results of every segment
-    num_cpus=multiprocessing.cpu_count()
+    num_cpus=multiprocessing.cpu_count() #Number of CPUs in this computer
     max_candidate=int(math.ceil(math.sqrt(num_to_factor))) #Square root of the number to factor
-    top=min(top,max_candidate) 
+    top=min(top,max_candidate) #The last possible candidate is the minimum between this two
     segments=get_problem_segments(bottom,top,num_cpus)
-    print "segments",segments
+    if arguments.verbose: print "segments",segments
     for i in segments:
         results_dirty.append(factorize_with_limits(num_to_factor,i[0],i[1]))
-    print results_dirty
-    return clean_results(results_dirty)
+    if arguments.verbose: print results_dirty
+    return clean_results(results_dirty,num_to_factor)
     
 #####MAIN#######
 
@@ -372,7 +376,6 @@ else: #Not running tests
             exit(2)
     t_start=time.time()
     try:
-        #factors=factorize_with_limits(arguments.num,arguments.firstcandi,arguments.lastcandi)
         factors=factor_broker(arguments.num,arguments.firstcandi,arguments.lastcandi)
     except KeyboardInterrupt:
         t_end=time.time()
