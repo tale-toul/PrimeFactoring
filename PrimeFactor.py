@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 1.3.6
+#Version 2.0.1
 
 import sys
 import time
@@ -239,7 +239,8 @@ def run_test_cases(batch_file):
         for case in Ky: #case is a string
             if arguments.verbose: print case
             t_start=time.time()
-            factors=factorize(int(case))
+            #factors=factorize(int(case))
+            factors=factor_broker(int(case),2,int(case))
             t_end=time.time()
             if factors == test_cases[case] and arguments.verbose: 
                 print "\t",factors, "Passed in",round(t_end-t_start,4),"seconds.", count,"of", test_cases_size
@@ -281,6 +282,20 @@ def get_problem_segments(bottom,top,number_of_segments):
         start_of_segment=end_of_segment+1
     return segments
 
+#Parameters: num_to_check.- the number to check for divisibiliti
+#           dividers.- the list of possible dividers
+#Return: true if is divisible by any of the dividers, false if it's not
+def is_divisible_by(num_to_check,dividers):
+    '''Checks whether num_to_check is  divisible by any of the numbers in dividers'''
+    is_divisible=False
+    for factor in dividers: #@Should be different factors, remove repeated ones@#
+        if num_to_check%factor == 0 and num_to_check != factor:
+            is_divisible=True
+            break
+    return is_divisible
+
+
+
 #Parameters: results_to_clean.- list of lists with the results returned by the factoring
 #                               of the different segments
 #Return value: the list of prime factors with respect to this results
@@ -294,27 +309,17 @@ def clean_results(results_to_clean):
     for result_tranche in results_to_clean:
         if len(result_tranche) == 1: pass #No factors in this tranche, carry on
         else: #There are possible prime factors in this tranche
-            last_result=result_tranche[-1]
             if first_result:
+                last_result=result_tranche[-1]
                 first_result=False
                 clean_factors += result_tranche[:-1]
             else:#Not the first tranche with more than 1 factor
                 for possible_prime in result_tranche[:-1]:
-                    is_prime=True
-                    for factor in clean_factors:
-                        if possible_prime%factor == 0:
-                            is_prime=False
-                            break
-                    if is_prime: clean_factors.append(possible_prime)
-    #@Turn this block (before and after) into a function
-    is_prime=True
-    for factor in clean_factors:
-        if last_result%factor == 0:
-            is_prime=False
-            break
-    if is_prime: clean_factors.append(last_result)
+                    if possible_prime > clean_factors[-1] and not is_divisible_by(possible_prime,clean_factors): 
+                            clean_factors.append(possible_prime)
+    if not is_divisible_by(last_result,clean_factors): 
+        clean_factors.append(last_result)
     return clean_factors
-                    
 
 
 
@@ -327,7 +332,7 @@ def factor_broker(num_to_factor,bottom,top):
     results_dirty=list() #A list of lists with the results of every segment
     num_cpus=multiprocessing.cpu_count()
     max_candidate=int(math.ceil(math.sqrt(num_to_factor))) #Square root of the number to factor
-    top=min(top,max_candidate) #@Apply this to the factorize function@#
+    top=min(top,max_candidate) 
     segments=get_problem_segments(bottom,top,num_cpus)
     print "segments",segments
     for i in segments:
