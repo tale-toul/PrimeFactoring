@@ -1064,10 +1064,8 @@ Nivel batido.
 
  1-Número compuesto múltiple
     954788612384655179 = [53077, 118429, 151894763L] In 0.0768 seconds
-
  2-Número compuesto por dos primos
     498542964342543929 = [652231511, 764365039L] In 452.1801 seconds
-    
  3-Número primo
     546698741123646019 = [546698741123646019L] In 507.4415 seconds    
 
@@ -1208,6 +1206,107 @@ una vez más en el nivel 17:
 
     55641397544639089 = [55641397544639089L] In 160.6151 seconds
 
-
 En sucesivas versiones nos basaremos en el trabajo de esta versión para conseguir mejoras
 en el rendimiento del programa.
+
+
+
+
+EJECUCIÓN PARALELA DE LOS SEGMENTOS
+
+En la versión 2.1.1 vamos a aprovechar la división en segmentos del problema para ejecutar
+la factorización dentro de cada uno de estos segmentos de forma paralela.  Con la
+ejecución paralela aprovechamos mejor el hardware de la máquina, y veremos que en esta
+primvera versión y según el tipo de número a factorizar, el rendimiento del programa puede
+mejorar o empeorar.
+
+Puesto que tenemos el problema bien delimitado en segmentos independientes solo tenemos
+que ejecutar la factorización en cada segmento como un proceso independiente de los demás
+y al final recopilar y filtrar los resultados.
+
+Para ejecutar varios procesos en paralelo se utiliza el modulo python "multiprocessing" y
+la función que se ejecutará como proceso independiente será factorize_with_limits.
+Algunas de las modificaciones importantes a esta función son:
+
+-Cada proceso independiente debe guardar sus resultados en un almacenamiento común a todos
+los procesos, para ello utilizamos un objeto de tipo multiprocessing.Queue que gestiona
+los accesos concurrentes sin provocar inconsistencias.  Por lo tanto en la llamada a la
+función factorize_with_limits se incluye la cola común como un nuevo parametro.  Al final
+de la función, los factores encontrados se añaden a la cola.
+
+-Al guardar los resusltados en la cola se elimina la linea "return" que devolvía los
+factores encontrados en el segmento.
+
+-Los procesos independientes no pueden recibir señales externas, por lo que se elimina el
+tratamiento de las mismas de la fución. 
+
+Los procesos independientes se lanzan desde la fucnión factor_broker, donde se define la
+cola para guardar los resultados.  Aquí se crean tantos procesos como CPUs tiene la
+máquina, se guardan en una lista y se lanza su ejecución.  A continuación se espera a que
+terminen todos los procesos usando el metodo join(), de lo contrario el programa
+continuaría adelante sin esperar a los resultados obtenidos de los procesos de
+factorización.
+
+Cuando todos los procesos han terminado se lee la cola de resultados y se mandan a la
+función clean_results que devuelve solo los factores primos.
+
+
+
+Pruebas de rendimiento
+
+-Nivel 17
+ 1-Número compuesto múltiple
+    64795512344765945 = [5, 31, 83, 157, 653, 49127233L] In 0.0039 seconds
+
+    64795512344765945 = [5, 31, 83, 157, 653, 49127233L] In 44.0142 seconds
+ 2-Número compuesto por dos primos
+    32563672784171761 = [67894373, 479622557L] In 45.8701 seconds    
+
+    32563672784171761 = [67894373, 479622557L] In 32.5388 seconds
+ 3-Número primo
+    55641397544639089 = [55641397544639089L] In 158.3416 seconds 
+    
+    55641397544639089 = [55641397544639089L] In 47.3305 seconds   
+
+-Nivel batido.  En el número compuesto (1) el rendimiento ha empeorado; en el número
+compuesto (2) a mejorado un poco; sin embargo en el número primo (3) ha mejorado mucho, se
+ha dividido por 4 el tiempo necesario para determinar que el número es primo.
+
+-Nivel 18
+
+ 1-Número compuesto múltiple
+    954788612384655179 = [53077, 118429, 151894763L] In 0.0768 seconds
+
+    954788612384655179 = [53077, 118429, 151894763L] In 173.0106 seconds
+ 2-Número compuesto por dos primos
+    498542964342543929 = [652231511, 764365039L] In 452.1801 seconds
+
+    498542964342543929 = [652231511, 764365039L] In 145.8587 seconds
+ 3-Número primo
+    546698741123646019 = [546698741123646019L] In 507.4415 seconds  
+    
+    546698741123646019 = [546698741123646019L] In 181.5399 seconds  
+
+Nivel batido.  En este caso la resolución del número de tipo (1) tarda mucho más, pero las
+resoluciones de los números de tipo (2) y (3) son más rápidas.
+
+-Nivel 19
+ 1-Número compuesto múltiple
+    3689445781236985154 = [2, 7, 11, 37, 121267, 5339444219L] In 0.0827 seconds
+
+    3689445781236985154 = [2, 7, 11, 37, 121267, 5339444219L] In 357.5535 seconds
+ 2-Número compuesto por dos primos
+    2537675226119470571 = [548997653, 4622379007L] In 384.9777 seconds
+
+    2537675226119470571 = [548997653, 4622379007L] In 335.733 seconds
+ 3-Número primo
+    5977455832169755667 = [5977455832169755667L] In 1825.4157 seconds. (media hora aproximadamente)
+
+    5977455832169755667 = [5977455832169755667L] In 685.0041 seconds
+
+Nivel batido. 
+
+A estas alturas es evidente que el rendimiento de esta versión es mejor en el caso (3),
+peor en el caso (1) y similar en el caso (2).  Hay que mejorar la lógica del programa.
+
+

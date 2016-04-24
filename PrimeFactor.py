@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 2.1.0
+#Version 2.1.1
 
 import sys
 import time
@@ -11,9 +11,10 @@ import signal
 import inspect
 import math
 import multiprocessing
+from multiprocessing import Process,Queue
 #import pdb
 
-factors=[] #List of found factors of number
+factors=[] #List of number's found factors
 
 #Parameters: num.- An integer 
 #            factors.- A list of integers
@@ -112,9 +113,10 @@ def factorize(compnum,candidate=2):
 #Parameters: num.- An integer to factorize
 #           first_candidate.- The first candidate to start looking for factors
 #           last_candidate.- The last candidate to try
-#Return value.- the list of factors
+#           queue_results.- multiprocessing queue to store the results
+#Return:  the list of factors
 #The core functionality of program, finds the prime factors of compnum
-def factorize_with_limits(compnum,candidate=2,last_candidate=2):
+def factorize_with_limits(compnum,queue_results,candidate=2,last_candidate=2):
     increments_dict={'7':[2,2,2,4],
                      '9':[2,2,4,2],
                      '1':[2,4,2,2],
@@ -136,58 +138,49 @@ def factorize_with_limits(compnum,candidate=2,last_candidate=2):
         candidate =int(str(candidate)[:-1]+text_candidate_last) #Add the new ending 
 #Now use the correct increment list
         increment=increments_dict[text_candidate_last]
-    signal.signal(signal.SIGUSR1,signal_show_current_status) #Sets the handler for the signal SIGUSR1
-    try:
-        if candidate == 2: #This condition is here because the initial value of candidate may be different from 2
-            while compnum%candidate == 0:  #Candidate = 2, consider it as a special case
-                pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
-            candidate += 1 #Now candidate equals 3
-        if candidate == 3: #This condition is here because the initial value of candidate may be different from 2
-            while compnum%candidate == 0: 
-                pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
-            candidate += 2 #Now candidate equals 5
-        if candidate ==4: candidate =5 #Upgrade to the next meaninful candidate
-        if candidate == 5: #This condition is here because the initial value of candidate may be different from 2
-            while compnum%candidate == 0: 
-                pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
-            candidate += 2 #Now candidate equals 7
+    if candidate == 2: #This condition is here because the initial value of candidate may be different from 2
+        while compnum%candidate == 0:  #Candidate = 2, consider it as a special case
+            pfactors.append(candidate)
+            compnum /= candidate
+            max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+        candidate += 1 #Now candidate equals 3
+    if candidate == 3: #This condition is here because the initial value of candidate may be different from 2
+        while compnum%candidate == 0:
+            pfactors.append(candidate)
+            compnum /= candidate
+            max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+        candidate += 2 #Now candidate equals 5
+    if candidate ==4: candidate =5 #Upgrade to the next meaninful candidate
+    if candidate == 5: #This condition is here because the initial value of candidate may be different from 2
+        while compnum%candidate == 0:
+            pfactors.append(candidate)
+            compnum /= candidate
+            max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+        candidate += 2 #Now candidate equals 7
 #----MAIN LOOP----
-        while candidate <= max_candidate: 
-            while compnum%candidate == 0: # For candidates ending in 7
-                pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
-            candidate += increment[0] #This increment depends on the incremnet list selected bejore
-            while compnum%candidate == 0: #For candidates ending in 9
-                pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
-            candidate += increment[1] #This increment depends on the incremnet list selected bejore
-            while compnum%candidate == 0: #For candidates ending in 1
-                pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
-            candidate += increment[2] #This increment depends on the incremnet list selected bejore
-            while compnum%candidate == 0: #For candidates ending in 3
-                pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
-            candidate += increment[3] #This increment depends on the incremnet list selected bejore
-        if compnum != 1: pfactors.append(compnum) 
-        signal.signal(signal.SIGUSR1,signal.SIG_DFL) #Sets the handler to its default state
-        return pfactors #In the end at least pfactors contains compnum
-    except KeyboardInterrupt:
-        print "Program interrupted by user"
-        print "Factors found so far:",pfactors
-        print "Last candidate:",candidate
-        raise
-
+    while candidate <= max_candidate:
+        while compnum%candidate == 0: # For candidates ending in 7
+            pfactors.append(candidate)
+            compnum /= candidate
+            max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+        candidate += increment[0] #This increment depends on the incremnet list selected bejore
+        while compnum%candidate == 0: #For candidates ending in 9
+            pfactors.append(candidate)
+            compnum /= candidate
+            max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+        candidate += increment[1] #This increment depends on the incremnet list selected bejore
+        while compnum%candidate == 0: #For candidates ending in 1
+            pfactors.append(candidate)
+            compnum /= candidate
+            max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+        candidate += increment[2] #This increment depends on the incremnet list selected bejore
+        while compnum%candidate == 0: #For candidates ending in 3
+            pfactors.append(candidate)
+            compnum /= candidate
+            max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+        candidate += increment[3] #This increment depends on the incremnet list selected bejore
+    if compnum != 1: pfactors.append(compnum)
+    queue_results.put(pfactors) #Add the results to the queue
 
 
 #Parameters: compnum.- number to factor
@@ -261,7 +254,6 @@ def run_test_cases(batch_file):
         for case in Ky: #case is a string
             if arguments.verbose: print case
             t_start=time.time()
-            #factors=factorize(int(case))
             factors=factor_broker(int(case),2,int(case))
             t_end=time.time()
             if factors == test_cases[case] and arguments.verbose: 
@@ -332,6 +324,8 @@ def clean_results(results_to_clean,num_to_factor):
 def factor_broker(num_to_factor,bottom,top):
     '''Divides the factoring problem in as many equal segments as CPUs are in the computer
     running the program.  Calls the factorize function for the smaller problems'''
+    factor_eng=[] # Parallel process
+    q_res_dirty=Queue()
     segments=list() #List of segments to scan for factors
     results_dirty=list() #A list of lists with the results of every segment
     num_cpus=multiprocessing.cpu_count() #Number of CPUs in this computer
@@ -340,63 +334,70 @@ def factor_broker(num_to_factor,bottom,top):
     segments=get_problem_segments(bottom,top,num_cpus)
     if arguments.verbose: print "segments",segments
     for i in segments:
-        results_dirty.append(factorize_with_limits(num_to_factor,i[0],i[1]))
-    if arguments.verbose: print results_dirty
+        job=Process(target=factorize_with_limits,args=(num_to_factor,q_res_dirty,i[0],i[1]))
+        factor_eng.append(job)
+        job.start()
+    for j in factor_eng:#Wait for all the process to finish
+        j.join()
+    while not q_res_dirty.empty():
+        results_dirty.append(q_res_dirty.get())
+    if arguments.verbose: print "Unfiltered results:",results_dirty
     return clean_results(results_dirty,num_to_factor)
     
 #####MAIN#######
 
 #pdb.set_trace()  #Uncomment to debug
 
-arguments=parse_arguments()
-if arguments.num < 1:
-    print "The number to factor must be a positive integer"
-    exit(-4)
-if arguments.firstcandi is not None:#An initial candidate has been assigned via the command line 
-    if arguments.firstcandi >= 2:
-        candidate=arguments.firstcandi
-    else:
-        print "The first posible candidate must be at least 2, you have entered",arguments.firstcandi 
-        exit(-5)
-else: arguments.firstcandi = 2 #Default value
-if arguments.lastcandi is not None: #A last candidate has been assigned via the command line
-    if arguments.lastcandi >= 2:
-        last_candidate=arguments.lastcandi
-    else:
-        print "The last posible andidate must be at least 2, you have entered",arguments.lastcandi
-        exit(-6)
-else: arguments.lastcandi = arguments.num
-if arguments.runtest: #If running the test cases
-    run_test_cases(arguments.runtest)
-else: #Not running tests
-    if arguments.addtest:#Save the test case if requested and it has not been saved before
-        test_cases=read_test_cases(arguments.addtest) #Load or create a dictionary of test cases
-        if str(arguments.num) in test_cases: #If the test case already exists, say so and exit
-            print "Test case",arguments.num,"already present:",arguments.num,"=",test_cases[str(arguments.num)]
-            exit(2)
-    t_start=time.time()
-    try:
-        factors=factor_broker(arguments.num,arguments.firstcandi,arguments.lastcandi)
-    except KeyboardInterrupt:
+if __name__ == '__main__':
+    arguments=parse_arguments()
+    if arguments.num < 1:
+        print "The number to factor must be a positive integer"
+        exit(-4)
+    if arguments.firstcandi is not None:#An initial candidate has been assigned via the command line
+        if arguments.firstcandi >= 2:
+            candidate=arguments.firstcandi
+        else:
+            print "The first posible candidate must be at least 2, you have entered",arguments.firstcandi
+            exit(-5)
+    else: arguments.firstcandi = 2 #Default value
+    if arguments.lastcandi is not None: #A last candidate has been assigned via the command line
+        if arguments.lastcandi >= 2:
+            last_candidate=arguments.lastcandi
+        else:
+            print "The last posible andidate must be at least 2, you have entered",arguments.lastcandi
+            exit(-6)
+    else: arguments.lastcandi = arguments.num
+    if arguments.runtest: #If running the test cases
+        run_test_cases(arguments.runtest)
+    else: #Not running tests
+        if arguments.addtest:#Save the test case if requested and it has not been saved before
+            test_cases=read_test_cases(arguments.addtest) #Load or create a dictionary of test cases
+            if str(arguments.num) in test_cases: #If the test case already exists, say so and exit
+                print "Test case",arguments.num,"already present:",arguments.num,"=",test_cases[str(arguments.num)]
+                exit(2)
+        t_start=time.time()
+        try:
+            factors=factor_broker(arguments.num,arguments.firstcandi,arguments.lastcandi)
+        except KeyboardInterrupt:
+            t_end=time.time()
+            print "Time used",round(t_end-t_start,4),"seconds"
+            exit(3)
         t_end=time.time()
-        print "Time used",round(t_end-t_start,4),"seconds"
-        exit(3)
-    t_end=time.time()
 
-    if len(factors)== 1 or validate_factors(arguments.num,factors): #If there's only one factor or they multiply to the orignal number
-        print "Factors of",arguments.num,"=",factors,
-        if arguments.verbose: print "In",round(t_end-t_start,4),"seconds"
-        if arguments.addtest:#Save the test case 
-            test_cases[arguments.num]=factors
-            try:
-                f_out=open(arguments.addtest,"w")
-            except:
-                print "Could not open file",arguments.addtest,"to write"
+        if len(factors)== 1 or validate_factors(arguments.num,factors): #If there's only one factor or they multiply to the orignal number
+            print "Factors of",arguments.num,"=",factors,
+            if arguments.verbose: print "In",round(t_end-t_start,4),"seconds"
+            if arguments.addtest:#Save the test case
+                test_cases[arguments.num]=factors
+                try:
+                    f_out=open(arguments.addtest,"w")
+                except:
+                    print "Could not open file",arguments.addtest,"to write"
+                    f_out.close()
+                    exit(-3)
+                f_out.write(json.dumps(test_cases))
                 f_out.close()
-                exit(-3)
-            f_out.write(json.dumps(test_cases))
-            f_out.close()
-        exit(0)
-    else:
-        print "The result is wrong, multiplying",factors,"doesn't yield",arguments.num
-        exit(-1)
+            exit(0)
+        else:
+            print "The result is wrong, multiplying",factors,"doesn't yield",arguments.num
+            exit(-1)

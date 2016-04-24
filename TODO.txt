@@ -3,6 +3,8 @@ List of features pending
 
 -Create a version using a database instead of json to store the test cases.
 
+-Añadir una opción de liena de comandos para ejecutar la factorización de forma NO
+paralela
 
 DONE
 
