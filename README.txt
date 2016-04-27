@@ -1214,6 +1214,10 @@ en el rendimiento del programa.
 
 EJECUCIÓN PARALELA DE LOS SEGMENTOS
 
+Referencias:
+    https://docs.python.org/2/library/multiprocessing.html
+    https://pymotw.com/2/multiprocessing/index.html
+
 En la versión 2.1.1 vamos a aprovechar la división en segmentos del problema para ejecutar
 la factorización dentro de cada uno de estos segmentos de forma paralela.  Con la
 ejecución paralela aprovechamos mejor el hardware de la máquina, y veremos que en esta
