@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 2.1.1
+#Version 2.2.0
 
 import sys
 import time
@@ -11,7 +11,7 @@ import signal
 import inspect
 import math
 import multiprocessing
-from multiprocessing import Process,Queue
+from multiprocessing import Process,Manager
 #import pdb
 
 factors=[] #List of number's found factors
@@ -110,13 +110,16 @@ def factorize(compnum,candidate=2):
 
 
 
-#Parameters: num.- An integer to factorize
-#           first_candidate.- The first candidate to start looking for factors
+#Parameters: compnum.- An integer to factorize
+#           own_results.- list to store the factors found during the execution of the
+#             function.  Belongs to a multiprocessing Manager so it's visible outside the
+#             process
+#           nms.- multiprocessing Namespace to share variables with the outside processes.
+#           candidate.- The first candidate to start looking for factors
 #           last_candidate.- The last candidate to try
-#           queue_results.- multiprocessing queue to store the results
 #Return:  the list of factors
 #The core functionality of program, finds the prime factors of compnum
-def factorize_with_limits(compnum,queue_results,candidate=2,last_candidate=2):
+def factorize_with_limits(compnum,own_results,nms,candidate=2,last_candidate=2):
     increments_dict={'7':[2,2,2,4],
                      '9':[2,2,4,2],
                      '1':[2,4,2,2],
@@ -180,7 +183,11 @@ def factorize_with_limits(compnum,queue_results,candidate=2,last_candidate=2):
             max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
         candidate += increment[3] #This increment depends on the incremnet list selected bejore
     if compnum != 1: pfactors.append(compnum)
-    queue_results.put(pfactors) #Add the results to the queue
+    own_results.extend(pfactors) #Add the results to the queue
+    if candidate > int(math.ceil(math.sqrt(compnum))):
+        nms.mis_acomplish=True
+    else:
+        nms.mis_acomplish=False
 
 
 #Parameters: compnum.- number to factor
@@ -324,8 +331,8 @@ def clean_results(results_to_clean,num_to_factor):
 def factor_broker(num_to_factor,bottom,top):
     '''Divides the factoring problem in as many equal segments as CPUs are in the computer
     running the program.  Calls the factorize function for the smaller problems'''
-    factor_eng=[] # Parallel process
-    q_res_dirty=Queue()
+    manager=Manager() #To access common elements among processes
+    factor_eng=list() #Parallel process
     segments=list() #List of segments to scan for factors
     results_dirty=list() #A list of lists with the results of every segment
     num_cpus=multiprocessing.cpu_count() #Number of CPUs in this computer
@@ -334,13 +341,21 @@ def factor_broker(num_to_factor,bottom,top):
     segments=get_problem_segments(bottom,top,num_cpus)
     if arguments.verbose: print "segments",segments
     for i in segments:
-        job=Process(target=factorize_with_limits,args=(num_to_factor,q_res_dirty,i[0],i[1]))
-        factor_eng.append(job)
+        own_results=manager.list() #The list of found factars in this segment
+        nms=manager.Namespace() #Namespace to create variables across processes
+        job=Process(target=factorize_with_limits,args=(num_to_factor,own_results,nms,i[0],i[1]))
+        factor_eng.append([own_results,job,nms])
         job.start()
+    Terminator=False
     for j in factor_eng:#Wait for all the process to finish
-        j.join()
-    while not q_res_dirty.empty():
-        results_dirty.append(q_res_dirty.get())
+        if not Terminator:
+            j[1].join()
+            if j[2].mis_acomplish: #If the number is completly factored, terminate the resto of processes
+                Terminator=True
+        else:
+            j[1].terminate()
+    for r in factor_eng: #Collect the factors found in each segment
+        results_dirty.append(r[0][:])
     if arguments.verbose: print "Unfiltered results:",results_dirty
     return clean_results(results_dirty,num_to_factor)
     

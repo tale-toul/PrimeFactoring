@@ -1215,14 +1215,14 @@ en el rendimiento del programa.
 EJECUCIÓN PARALELA DE LOS SEGMENTOS
 
 En la versión 2.1.1 vamos a aprovechar la división en segmentos del problema para ejecutar
-la factorización dentro de cada uno de estos segmentos de forma paralela.  Con la
-ejecución paralela aprovechamos mejor el hardware de la máquina, y veremos que en esta
-primvera versión y según el tipo de número a factorizar, el rendimiento del programa puede
-mejorar o empeorar.
+la factorización dentro de cada uno de ellos de forma paralela.  Con la ejecución paralela
+aprovechamos mejor el hardware de la máquina, y veremos que en esta primera versión y
+según el tipo de número a factorizar, el rendimiento del programa puede mejorar o
+empeorar.
 
-Puesto que tenemos el problema bien delimitado en segmentos independientes solo tenemos
-que ejecutar la factorización en cada segmento como un proceso independiente de los demás
-y al final recopilar y filtrar los resultados.
+Puesto que tenemos el problema bien delimitado en segmentos independientes podemos
+ejecutar la factorización en cada segmento como un proceso independiente de los demás y al
+final recopilar y filtrar los resultados.
 
 Para ejecutar varios procesos en paralelo se utiliza el modulo python "multiprocessing" y
 la función que se ejecutará como proceso independiente será factorize_with_limits.
@@ -1309,4 +1309,35 @@ Nivel batido.
 A estas alturas es evidente que el rendimiento de esta versión es mejor en el caso (3),
 peor en el caso (1) y similar en el caso (2).  Hay que mejorar la lógica del programa.
 
+
+¿Por qué es peor el rendimiento en los números compuestos por varios factores?
+
+La razón es que cuando un número está compuesto por varios factores, a medida que vamos
+encontrando dichos factores el número a factorizar se reduce muy rapidamente y por lo
+tanto el problema se resuelve en poco tiempo.  
+
+Esto funciona muy bien cuando usamos un método secuencial para solucionar el problema,
+pero cuando usamos un método paralelo la reducción del número a factorizar está delimitada
+dentro del segmento de factorización.  Si por ejemplo todos los factores de un número
+están dentro del primer segmento, la factorización de ese primer segmento terminará muy
+rápido, pero el resto de segmentos recorreran todo el espacio de candidatos sin encontrar
+ningún factor.  Por lo tanto la factorización total tardará tanto como la factorización del
+segmento más lento, que será el que tenga menos (nigún) factores en él.
+
+
+
+PARALELISMO SECUENCIAL
+
+Para evitar el problema de la lentitud de factorización en los números compuesto por
+múltiples primos vamos a definir un método que tenga en cuenta la finalización de los
+segmentos de forma secuencial desde el primero.
+
+La idea es que a medida que vayan terminando los procesos de factorización vayamos
+reevaluando si la factorización ya se ha completado, y si no es así, la posibilidad de que
+el candidato máximo se haya reducido, lo cual ocurre si se han encontrado factores primos.
+
+Es importante que estas comprobaciones se hagan en orden secuencial desde el primer
+segmento en adelante, ya que si proceso que gestiona el tercer segmento termina antes que
+los que gestionan los segmentos 1 y 2, no puedo asegurar que los factores encontrados en
+el tercer segmento sean primos ni que los segmentos 1 y 2 no contengan otros factores.
 
