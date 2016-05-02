@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 
-#Version 2.2.0
+#Version 2.2.1
 
 import sys
 import time
 import argparse
-import os.path
+import os, os.path
 import json
 import signal
 import inspect
 import math
 import multiprocessing
-from multiprocessing import Process,Manager
+from multiprocessing import Process,Manager,Lock,Event
 #import pdb
 
 factors=[] #List of number's found factors
@@ -115,18 +115,20 @@ def factorize(compnum,candidate=2):
 #             function.  Belongs to a multiprocessing Manager so it's visible outside the
 #             process
 #           nms.- multiprocessing Namespace to share variables with the outside processes.
+#           loc.- a multiprocessing Lock to controll access to own_results
+#           event.- An event objecto to use along with signal to control the passing of
+#               info to the factorize broker, before dying
 #           candidate.- The first candidate to start looking for factors
 #           last_candidate.- The last candidate to try
 #Return:  the list of factors
 #The core functionality of program, finds the prime factors of compnum
-def factorize_with_limits(compnum,own_results,nms,candidate=2,last_candidate=2):
+def factorize_with_limits(compnum,own_results,nms,loc,event,candidate=2,last_candidate=2):
     increments_dict={'7':[2,2,2,4],
                      '9':[2,2,4,2],
                      '1':[2,4,2,2],
                      '3':[4,2,2,2]}
     increment=increments_dict['7'] #By default the 7 increment list is used
     max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
-    pfactors=[] #List of found factors 
     if candidate > 5:
         text_candidate_last=str(candidate)[-1]
 #Place the candidate in the correct position; if the candidate ends in 7, 9, 1 or 3 do nothing
@@ -141,53 +143,69 @@ def factorize_with_limits(compnum,own_results,nms,candidate=2,last_candidate=2):
         candidate =int(str(candidate)[:-1]+text_candidate_last) #Add the new ending 
 #Now use the correct increment list
         increment=increments_dict[text_candidate_last]
+    signal.signal(signal.SIGUSR1,signal_show_current_status) #Sets the handler for the signal SIGUSR1
     if candidate == 2: #This condition is here because the initial value of candidate may be different from 2
         while compnum%candidate == 0:  #Candidate = 2, consider it as a special case
-            pfactors.append(candidate)
+            loc.acquire()
+            own_results.append(candidate)
             compnum /= candidate
             max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+            loc.release()
         candidate += 1 #Now candidate equals 3
     if candidate == 3: #This condition is here because the initial value of candidate may be different from 2
         while compnum%candidate == 0:
-            pfactors.append(candidate)
+            loc.acquire()
+            own_results.append(candidate)
             compnum /= candidate
             max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+            loc.release()
         candidate += 2 #Now candidate equals 5
     if candidate ==4: candidate =5 #Upgrade to the next meaninful candidate
     if candidate == 5: #This condition is here because the initial value of candidate may be different from 2
         while compnum%candidate == 0:
-            pfactors.append(candidate)
+            loc.acquire()
+            own_results.append(candidate)
             compnum /= candidate
             max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+            loc.release()
         candidate += 2 #Now candidate equals 7
 #----MAIN LOOP----
     while candidate <= max_candidate:
         while compnum%candidate == 0: # For candidates ending in 7
-            pfactors.append(candidate)
+            loc.acquire()
+            own_results.append(candidate)
             compnum /= candidate
             max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+            loc.release()
         candidate += increment[0] #This increment depends on the incremnet list selected bejore
         while compnum%candidate == 0: #For candidates ending in 9
-            pfactors.append(candidate)
+            loc.acquire()
+            own_results.append(candidate)
             compnum /= candidate
             max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+            loc.release()
         candidate += increment[1] #This increment depends on the incremnet list selected bejore
         while compnum%candidate == 0: #For candidates ending in 1
-            pfactors.append(candidate)
+            loc.acquire()
+            own_results.append(candidate)
             compnum /= candidate
             max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+            loc.release()
         candidate += increment[2] #This increment depends on the incremnet list selected bejore
         while compnum%candidate == 0: #For candidates ending in 3
-            pfactors.append(candidate)
+            loc.acquire()
+            own_results.append(candidate)
             compnum /= candidate
             max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+            loc.release()
         candidate += increment[3] #This increment depends on the incremnet list selected bejore
-    if compnum != 1: pfactors.append(compnum)
-    own_results.extend(pfactors) #Add the results to the queue
+    loc.acquire()
+    if compnum != 1: own_results.append(compnum)
     if candidate > int(math.ceil(math.sqrt(compnum))):
         nms.mis_acomplish=True
     else:
         nms.mis_acomplish=False
+    loc.release()
 
 
 #Parameters: compnum.- number to factor
@@ -281,10 +299,13 @@ def run_test_cases(batch_file):
 def signal_show_current_status(signum,stack):
    (args,varargs,keywords,local_vars)=inspect.getargvalues(stack)
    print "Received signal",signum
-   print "\tFactors found so far:",local_vars['pfactors']
+   #print "local_vars:",local_vars #Dump the local_vars dictionary
+   print "\tFactors found so far:",local_vars['own_results']
    print "\tLast candidate:",local_vars['candidate']
+   local_vars['nms'].last_candidate=local_vars['candidate']
    t_so_far=time.time()
    print "\tTime used:", round(t_so_far-t_start,3),"seconds"
+   local_vars['event'].set()
 
 
 #Parameters: number_of_segments.- The number of divisions to make
@@ -332,7 +353,7 @@ def factor_broker(num_to_factor,bottom,top):
     '''Divides the factoring problem in as many equal segments as CPUs are in the computer
     running the program.  Calls the factorize function for the smaller problems'''
     manager=Manager() #To access common elements among processes
-    factor_eng=list() #Parallel process
+    factor_eng=list() #@This data type is getting complex, explain it@#
     segments=list() #List of segments to scan for factors
     results_dirty=list() #A list of lists with the results of every segment
     num_cpus=multiprocessing.cpu_count() #Number of CPUs in this computer
@@ -343,15 +364,41 @@ def factor_broker(num_to_factor,bottom,top):
     for i in segments:
         own_results=manager.list() #The list of found factars in this segment
         nms=manager.Namespace() #Namespace to create variables across processes
-        job=Process(target=factorize_with_limits,args=(num_to_factor,own_results,nms,i[0],i[1]))
-        factor_eng.append([own_results,job,nms])
+        loc=Lock() #A lock to controll access to results (factors found)
+        event=Event() #An event object to set when the process is ready to dye
+        job=Process(target=factorize_with_limits,args=(num_to_factor,own_results,nms,loc,event,i[0],i[1]))
+        factor_eng.append([own_results,job,nms,loc,event])
         job.start()
     Terminator=False
-    for j in factor_eng:#Wait for all the process to finish
+    for idx,j in enumerate(factor_eng):#Wait for all the processes to finish
         if not Terminator:
             j[1].join()
             if j[2].mis_acomplish: #If the number is completly factored, terminate the resto of processes
                 Terminator=True
+            elif len(j[0]) > 1: #Found factors in this segment
+                print "Found factors in",j[1].name,"PID:",j[1].pid
+                print "Aquire lock for the next process:",factor_eng[idx+1][1].name
+                factor_eng[idx+1][3].acquire()
+                factor_eng[idx+1][1].join(1)
+                if factor_eng[idx+1][1].is_alive():
+# Use this number to test: 348235695813797
+                    print "Send a signal to stop to the next process pid:",factor_eng[idx+1][1].pid
+                    os.kill(factor_eng[idx+1][1].pid,signal.SIGUSR1)
+                    factor_eng[idx+1][4].wait()
+                    factor_eng[idx+1][1].terminate()
+                    own_results=manager.list() #The list of found factars in this segment
+                    nms=manager.Namespace() #Namespace to create variables across processes
+                    loc=Lock() #A lock to controll access to results (factors found)
+                    event=Event() #An event object to set when the process is ready to dye
+                    print "num_to_factor=",j[0][-1]
+                    print "first candidate:",factor_eng[idx+1][2].last_candidate
+                    print "end of segment:",segments[idx+1][1]
+                    job=Process(target=factorize_with_limits,args=(j[0][-1],own_results,nms,loc,event,factor_eng[idx+1][2].last_candidate,segments[idx+1][1]))
+                    factor_eng[idx+1]=[own_results,job,nms,loc,event]
+                    job.start()
+                    print "Relaunch the process with new parameters:"
+                else:
+                    print "Process is not alive anymore"
         else:
             j[1].terminate()
     for r in factor_eng: #Collect the factors found in each segment

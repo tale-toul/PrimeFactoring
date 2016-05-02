@@ -1334,10 +1334,52 @@ segmentos de forma secuencial desde el primero.
 
 La idea es que a medida que vayan terminando los procesos de factorización vayamos
 reevaluando si la factorización ya se ha completado, y si no es así, la posibilidad de que
-el candidato máximo se haya reducido, lo cual ocurre si se han encontrado factores primos.
+el candidato máximo se haya reducido, lo cual ocurre si se han encontrado factores primos
+en el proceso recien terminado.
 
 Es importante que estas comprobaciones se hagan en orden secuencial desde el primer
-segmento en adelante, ya que si proceso que gestiona el tercer segmento termina antes que
-los que gestionan los segmentos 1 y 2, no puedo asegurar que los factores encontrados en
-el tercer segmento sean primos ni que los segmentos 1 y 2 no contengan otros factores.
+segmento en adelante, ya que si el proceso que gestiona el tercer segmento termina antes
+que los que gestionan los segmentos 1 y 2, no puedo asegurar que los factores encontrados
+en el tercer segmento sean primos, ni que los segmentos 1 y 2 no contengan otros factores.
+
+El funcionamiento es el siguiente:
+
+Supongamos que tenemos 4 procesos, cada uno buscando factores primos en una cuarta parte
+del espacio de posibles factores.
+
+-Cuando el primer proceso de factorización termina, si el último candidato que se ha
+ probado es mas grande que el candidato máximo posible para el número a factorizar,
+ entonces marcamos el proceso total de factorización como completado y se termina el
+ programa.
+
+-Si al terminar el primer proceso no se ha terminado con la factorización pero sí se ha
+ encontrado algún factor, sabemos que estos factores son primos y que el resultado de
+ dividir el número original entre los factores encontrados es menor que el original y por
+ lo tanto es un problema más facil y rápido de solucionar.  
+ 
+ Entonces vamos a parar el segundo proceso y relanzarlo con nuevos valores.
+
+ Se bloquea el segundo proceso con un "lock" que le impide actualizar el número a
+ factorizar, añadir nuevos factores encontrados, modificar el candidato máximo para el
+ proceso o acabar su operación (salir), pero no le impide continuar probando candidatos.
+
+ Luego, por razones técnicas relacionadas con la combinación de python y linux, tengo que
+ ejecutar una orden join para permitir que el segundo proceso termine ordenadamente si ya
+ había concluido su trabajo.  Esta como esperando que le habran la puerta para salir.
+
+ Después de darle la oportunidad de acabar ordenadamente, compruebo si el proceso aun está
+ vivo, si es así le envío una señal asincrona para obtener el valor del último candidato
+ probado.
+
+ Espero a que la funcion asociada a la señal asíncrona se ejecute, esto se controla con un
+ objeto de tipo "Event", y entonces mato el proceso 2.
+
+-A continuación construimos un nuevo proceso 2 con los valores actualizados: un nuevo
+ número a factorizar y un nuevo candidato inicial.  El candidato final se mantiene igual,
+ y dentro del proceso se calculará un nuevo candidato máximo a partir del nuevo número a
+ factorizar 
+
+Cuando el segundo proceso termina repetimos el proceso con respecto al tercero, y cuando
+el tercero termina lo repetimos con respecto al cuarto.  Cuando el cuarto termina, si es
+que hemos llegado tan lejos se ha completado la factorización.
 
