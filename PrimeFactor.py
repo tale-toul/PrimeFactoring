@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 2.2.1
+#Version 2.2.2
 
 import sys
 import time
@@ -14,7 +14,8 @@ import multiprocessing
 from multiprocessing import Process,Manager,Lock,Event
 #import pdb
 
-factors=[] #List of number's found factors
+factors=list() #List of number's found factors
+segments=list()
 
 #Parameters: num.- An integer 
 #            factors.- A list of integers
@@ -127,6 +128,7 @@ def factorize_with_limits(compnum,own_results,nms,loc,event,candidate=2,last_can
                      '9':[2,2,4,2],
                      '1':[2,4,2,2],
                      '3':[4,2,2,2]}
+    nms.mis_acomplish=False
     increment=increments_dict['7'] #By default the 7 increment list is used
     max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
     if candidate > 5:
@@ -203,8 +205,6 @@ def factorize_with_limits(compnum,own_results,nms,loc,event,candidate=2,last_can
     if compnum != 1: own_results.append(compnum)
     if candidate > int(math.ceil(math.sqrt(compnum))):
         nms.mis_acomplish=True
-    else:
-        nms.mis_acomplish=False
     loc.release()
 
 
@@ -243,6 +243,7 @@ def parse_arguments():
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
     parser.add_argument("-c", "--firstcandi", help="First candidate to start factoring the number", type=int)
     parser.add_argument("-l", "--lastcandi", help="Last candidate to check for primes", type=int)
+    parser.add_argument("--segments", help="Define the segment limits for the factoring processes", nargs='*', type=int)
     disjunt.add_argument("--addtest", metavar="FILE",  help="Adds the results of factoring this number, as a test case, to the file specified")
     disjunt.add_argument("--runtest", metavar="FILE", help="Run the test cases")
     return(parser.parse_args()) 
@@ -354,14 +355,15 @@ def factor_broker(num_to_factor,bottom,top):
     running the program.  Calls the factorize function for the smaller problems'''
     manager=Manager() #To access common elements among processes
     factor_eng=list() #@This data type is getting complex, explain it@#
-    segments=list() #List of segments to scan for factors
+    global segments #=list() #List of segments to scan for factors
     results_dirty=list() #A list of lists with the results of every segment
     num_cpus=multiprocessing.cpu_count() #Number of CPUs in this computer
     max_candidate=int(math.ceil(math.sqrt(num_to_factor))) #Square root of the number to factor
     top=min(top,max_candidate) #The last possible candidate is the minimum between this two
-    segments=get_problem_segments(bottom,top,num_cpus)
+    if not segments:
+        segments=get_problem_segments(bottom,top,num_cpus)
     if arguments.verbose: print "segments",segments
-    for i in segments:
+    for i in segments: #The number of segments defines the number of processes
         own_results=manager.list() #The list of found factars in this segment
         nms=manager.Namespace() #Namespace to create variables across processes
         loc=Lock() #A lock to controll access to results (factors found)
@@ -381,12 +383,12 @@ def factor_broker(num_to_factor,bottom,top):
                 factor_eng[idx+1][3].acquire()
                 factor_eng[idx+1][1].join(1)
                 if factor_eng[idx+1][1].is_alive():
-# Use this number to test: 348235695813797
+            # Use this number to test: 348235695813797
                     print "Send a signal to stop to the next process pid:",factor_eng[idx+1][1].pid
                     os.kill(factor_eng[idx+1][1].pid,signal.SIGUSR1)
                     factor_eng[idx+1][4].wait()
                     factor_eng[idx+1][1].terminate()
-                    own_results=manager.list() #The list of found factars in this segment
+                    own_results=factor_eng[idx+1][0] #Reuse the old own_results in case it has factors in it, unprobable
                     nms=manager.Namespace() #Namespace to create variables across processes
                     loc=Lock() #A lock to controll access to results (factors found)
                     event=Event() #An event object to set when the process is ready to dye
@@ -396,7 +398,7 @@ def factor_broker(num_to_factor,bottom,top):
                     job=Process(target=factorize_with_limits,args=(j[0][-1],own_results,nms,loc,event,factor_eng[idx+1][2].last_candidate,segments[idx+1][1]))
                     factor_eng[idx+1]=[own_results,job,nms,loc,event]
                     job.start()
-                    print "Relaunch the process with new parameters:"
+                    print "Relaunched the process with new parameters:"
                 else:
                     print "Process is not alive anymore"
         else:
@@ -429,6 +431,12 @@ if __name__ == '__main__':
             print "The last posible andidate must be at least 2, you have entered",arguments.lastcandi
             exit(-6)
     else: arguments.lastcandi = arguments.num
+    if arguments.segments is not None:
+        while len(arguments.segments) > 1:
+            segment_ini=arguments.segments.pop(0)
+            segment_end=arguments.segments.pop(0)
+            segments.append((segment_ini,segment_end))
+        print "Segments",segments
     if arguments.runtest: #If running the test cases
         run_test_cases(arguments.runtest)
     else: #Not running tests
