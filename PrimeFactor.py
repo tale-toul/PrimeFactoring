@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 2.2.2
+#Version 2.2.3
 
 import sys
 import time
@@ -274,13 +274,13 @@ def run_test_cases(batch_file):
     test_cases=read_test_cases(batch_file) #Load or create a dictionary of test cases
     count=1 #The case number I'm about to try
     test_cases_size=len(test_cases)
-    if test_cases_size >0: #There are tests to be run
+    if test_cases_size > 0: #There are tests to be run
         Ky=test_cases.keys() #Get a list of the keys (numbers) in the dictionary
         Ky.sort(key=int) #sort the list numerically
         for case in Ky: #case is a string
             if arguments.verbose: print case
             t_start=time.time()
-            factors=factor_broker(int(case),2,int(case))
+            factors=factor_broker(int(case),2,int(case),None)
             t_end=time.time()
             if factors == test_cases[case] and arguments.verbose: 
                 print "\t",factors, "Passed in",round(t_end-t_start,4),"seconds.", count,"of", test_cases_size
@@ -350,27 +350,41 @@ def clean_results(results_to_clean,num_to_factor):
 #Parameters: num_to_factor.- The number to factor
 #            bottom.-First number of the set to start looking for factors
 #            top.- Last number of the set to look for factors
-def factor_broker(num_to_factor,bottom,top):
+#            segments.- list of tuples with the segments limits
+def factor_broker(num_to_factor,bottom,top,segments):
     '''Divides the factoring problem in as many equal segments as CPUs are in the computer
     running the program.  Calls the factorize function for the smaller problems'''
     manager=Manager() #To access common elements among processes
-    factor_eng=list() #@This data type is getting complex, explain it@#
-    global segments #=list() #List of segments to scan for factors
+    factor_eng=list() #This is a complex data structure used to keep information along
+    #the processes.  Each element in the list represents a factoring process and it's
+    #made of the following elements:
+    #-own_results.- a multiprocessing shared list to store the found factors by the
+    #       process in the segment
+    #-job.- the handler to the process itself
+    #-nms.- a multiprocessing shared namespace used to return variables from the
+    #       processes.
+    #-loc.- a multiprocessing Lock to control de update of the own_results list, the
+    #       number to factor, the max candidate, and avoid the premature exit of the
+    #       process when it is being relaunched
+    #-event.- a multiprocessing Event to signal the factor broker that a process in the
+    #       middle of being relaunched, is ready for termination
     results_dirty=list() #A list of lists with the results of every segment
     num_cpus=multiprocessing.cpu_count() #Number of CPUs in this computer
     max_candidate=int(math.ceil(math.sqrt(num_to_factor))) #Square root of the number to factor
     top=min(top,max_candidate) #The last possible candidate is the minimum between this two
-    if not segments:
+    if not segments:#No segments passed in the command line
         segments=get_problem_segments(bottom,top,num_cpus)
     if arguments.verbose: print "segments",segments
     for i in segments: #The number of segments defines the number of processes
-        own_results=manager.list() #The list of found factars in this segment
-        nms=manager.Namespace() #Namespace to create variables across processes
-        loc=Lock() #A lock to controll access to results (factors found)
-        event=Event() #An event object to set when the process is ready to dye
+        own_results=manager.list() #The list of found factars in this segment, one for every process
+        nms=manager.Namespace() #Namespace to create variables across processes, one for every process
+        loc=Lock() #A lock to controll access to results (factors found), one for every process
+        event=Event() #An event object to set when the process is ready to dye, one for every process
         job=Process(target=factorize_with_limits,args=(num_to_factor,own_results,nms,loc,event,i[0],i[1]))
         factor_eng.append([own_results,job,nms,loc,event])
         job.start()
+        if arguments.verbose:
+            print "Starting process:",job.pid
     Terminator=False
     for idx,j in enumerate(factor_eng):#Wait for all the processes to finish
         if not Terminator:
@@ -378,13 +392,13 @@ def factor_broker(num_to_factor,bottom,top):
             if j[2].mis_acomplish: #If the number is completly factored, terminate the resto of processes
                 Terminator=True
             elif len(j[0]) > 1: #Found factors in this segment
-                print "Found factors in",j[1].name,"PID:",j[1].pid
+                print "Found factors in",j[1].name,"PID=",j[1].pid, j[0]
                 print "Aquire lock for the next process:",factor_eng[idx+1][1].name
                 factor_eng[idx+1][3].acquire()
-                factor_eng[idx+1][1].join(1)
+                factor_eng[idx+1][1].join(1) #Needed to give a chance to a finished process to bow out
                 if factor_eng[idx+1][1].is_alive():
-            # Use this number to test: 348235695813797
                     print "Send a signal to stop to the next process pid:",factor_eng[idx+1][1].pid
+                    factor_eng[idx+1][4].clear() #In case it was set from the shell
                     os.kill(factor_eng[idx+1][1].pid,signal.SIGUSR1)
                     factor_eng[idx+1][4].wait()
                     factor_eng[idx+1][1].terminate()
@@ -431,23 +445,24 @@ if __name__ == '__main__':
             print "The last posible andidate must be at least 2, you have entered",arguments.lastcandi
             exit(-6)
     else: arguments.lastcandi = arguments.num
-    if arguments.segments is not None:
-        while len(arguments.segments) > 1:
-            segment_ini=arguments.segments.pop(0)
-            segment_end=arguments.segments.pop(0)
-            segments.append((segment_ini,segment_end))
-        print "Segments",segments
     if arguments.runtest: #If running the test cases
         run_test_cases(arguments.runtest)
     else: #Not running tests
+        if arguments.segments is not None:
+            while len(arguments.segments) > 1:
+                segment_ini=arguments.segments.pop(0)
+                segment_end=arguments.segments.pop(0)
+                segments.append((segment_ini,segment_end))
         if arguments.addtest:#Save the test case if requested and it has not been saved before
             test_cases=read_test_cases(arguments.addtest) #Load or create a dictionary of test cases
             if str(arguments.num) in test_cases: #If the test case already exists, say so and exit
                 print "Test case",arguments.num,"already present:",arguments.num,"=",test_cases[str(arguments.num)]
                 exit(2)
+        if arguments.verbose:
+            print "+Number to factor=",arguments.num
         t_start=time.time()
         try:
-            factors=factor_broker(arguments.num,arguments.firstcandi,arguments.lastcandi)
+            factors=factor_broker(arguments.num,arguments.firstcandi,arguments.lastcandi,segments)
         except KeyboardInterrupt:
             t_end=time.time()
             print "Time used",round(t_end-t_start,4),"seconds"
