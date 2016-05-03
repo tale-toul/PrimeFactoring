@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 2.1.2
+#Version 2.1.3
 
 import sys
 import time
@@ -11,7 +11,7 @@ import signal
 import inspect
 import math
 import multiprocessing
-from multiprocessing import Process,Queue
+from multiprocessing import Process,Queue,Manager
 #import pdb
 
 factors=[] #List of number's found factors
@@ -110,16 +110,16 @@ def factorize(compnum,candidate=2):
 
 
 
-#Parameters: num.- Integer number to factorize
+#Parameters: compnum.- Integer number to factor
 #           queue_results.- multiprocessing queue to store the results
-#           global_multivar.- global object (it's a list) that stores: as first element
+#           global_multivar.- global managed list that stores: as first element
 #                   the name of the first factorize process currently alive and as the second element the global
 #                   maximum candidate 
 #           first_candidate.- The first candidate to start looking for factors
 #           last_candidate.- The last candidate to try
 #Return:  the list of factors
-#The core functionality of program, finds the prime factors of compnum
 def factorize_with_limits(compnum,queue_results,global_multivar,candidate=2,last_candidate=2):
+    '''The core functionality of program, finds the prime factors of compnum'''
     increments_dict={'7':[2,2,2,4],
                      '9':[2,2,4,2],
                      '1':[2,4,2,2],
@@ -140,7 +140,7 @@ def factorize_with_limits(compnum,queue_results,global_multivar,candidate=2,last
         elif text_candidate_last == '2':
             text_candidate_last='3' #Bring it up to next number ending in 3
         candidate =int(str(candidate)[:-1]+text_candidate_last) #Add the new ending, even if I didn't change it 
-#Now use the correct increment list
+        #Now use the correct increment list
         increment=increments_dict[text_candidate_last]
     if candidate == 2: #This condition is here because the initial value of candidate may be different from 2
         while compnum%candidate == 0:  #Candidate = 2, consider it as a special case
@@ -148,6 +148,7 @@ def factorize_with_limits(compnum,queue_results,global_multivar,candidate=2,last
             compnum /= candidate
             temp_max_candidate=int(math.ceil(math.sqrt(compnum))) #The max candidate for the local compnum
             update_global(global_multivar,temp_max_candidate)
+            max_candidate=min(last_candidate,temp_max_candidate,global_multivar[1])
         candidate += 1 #Now candidate equals 3
     if candidate == 3: #This condition is here because the initial value of candidate may be different from 2
         while compnum%candidate == 0:
@@ -155,6 +156,7 @@ def factorize_with_limits(compnum,queue_results,global_multivar,candidate=2,last
             compnum /= candidate
             temp_max_candidate=int(math.ceil(math.sqrt(compnum))) #The max candidate for the local compnum
             update_globals(global_multivar,temp_max_candidate)
+            max_candidate=min(last_candidate,temp_max_candidate,global_multivar[1])
         candidate += 2 #Now candidate equals 5
     if candidate ==4: candidate =5 #Upgrade to the next meaninful candidate
     if candidate == 5: #This condition is here because the initial value of candidate may be different from 2
@@ -163,32 +165,37 @@ def factorize_with_limits(compnum,queue_results,global_multivar,candidate=2,last
             compnum /= candidate
             temp_max_candidate=int(math.ceil(math.sqrt(compnum))) #The max candidate for the local compnum
             update_global(global_multivar,temp_max_candidate)
+            max_candidate=min(last_candidate,temp_max_candidate,global_multivar[1])
         candidate += 2 #Now candidate equals 7
 #----MAIN LOOP----
-    while candidate <= min(last_candidate,temp_max_candidate,global_multivar[1]):
+    while candidate <= max_candidate:
         while compnum%candidate == 0: # For candidates ending in 7
             pfactors.append(candidate)
             compnum /= candidate
             temp_max_candidate=int(math.ceil(math.sqrt(compnum))) #The max candidate for the local compnum
             update_global(global_multivar,temp_max_candidate)
+            max_candidate=min(last_candidate,temp_max_candidate,global_multivar[1])
         candidate += increment[0] #This increment depends on the incremnet list selected bejore
         while compnum%candidate == 0: #For candidates ending in 9
             pfactors.append(candidate)
             compnum /= candidate
             temp_max_candidate=int(math.ceil(math.sqrt(compnum))) #The max candidate for the local compnum
             update_global(global_multivar,temp_max_candidate)
+            max_candidate=min(last_candidate,temp_max_candidate,global_multivar[1])
         candidate += increment[1] #This increment depends on the incremnet list selected bejore
         while compnum%candidate == 0: #For candidates ending in 1
             pfactors.append(candidate)
             compnum /= candidate
             temp_max_candidate=int(math.ceil(math.sqrt(compnum))) #The max candidate for the local compnum
             update_global(global_multivar,temp_max_candidate)
+            max_candidate=min(last_candidate,temp_max_candidate,global_multivar[1])
         candidate += increment[2] #This increment depends on the incremnet list selected bejore
         while compnum%candidate == 0: #For candidates ending in 3
             pfactors.append(candidate)
             compnum /= candidate
             temp_max_candidate=int(math.ceil(math.sqrt(compnum))) #The max candidate for the local compnum
             update_global(global_multivar,temp_max_candidate)
+            max_candidate=min(last_candidate,temp_max_candidate,global_multivar[1])
         candidate += increment[3] #This increment depends on the incremnet list selected bejore
     if compnum != 1: pfactors.append(compnum)
     queue_results.put(pfactors) #Add the results to the queue
@@ -341,10 +348,11 @@ def factor_broker(num_to_factor,bottom,top):
     results_dirty=list() #A list of lists with the results of every segment
     num_cpus=multiprocessing.cpu_count() #Number of CPUs in this computer
     Gmax_candidate=int(math.ceil(math.sqrt(num_to_factor))) #Global max candidate, common to all factorize processes
+    manager=Manager() #Manager to share a list among the factorize processes
+    global_multivar=manager.list([str(),Gmax_candidate]) # Shared list to store common variables across all the processes
     top=min(top,Gmax_candidate) #The last possible candidate is the minimum between this two
     segments=get_problem_segments(bottom,top,num_cpus)
     if arguments.verbose: print "segments",segments
-    global_multivar=[str(),Gmax_candidate] #New type of object to store common variables across all the processes
     for i in segments:
         job=Process(target=factorize_with_limits,args=(num_to_factor,q_res_dirty,global_multivar,i[0],i[1]))
         factor_eng.append(job)
@@ -368,10 +376,8 @@ def factor_broker(num_to_factor,bottom,top):
 #           temp_max_candidate.- The max candidate in this process taken from the square
 #           root of the current number to factor in this process and segment
 def update_global(global_multivar,temp_max_candidate):
-    print "Names: current.-",multiprocessing.current_process().name ,"global.-", global_multivar[0]
-    print "Gmax_candidate:",global_multivar[1]
     if multiprocessing.current_process().name == global_multivar[0]: #Check if this process is the first alive
-#@Even if this is the first process alive now, may be there are previous factors found in
+#@Even if this is the first process alive now, there may be previous factors found in
     #here from before that we have to check/validate before.  So clearly there's a
     #different on how to do things between the very first process from left to right to
     #find factors, and the rest@#
