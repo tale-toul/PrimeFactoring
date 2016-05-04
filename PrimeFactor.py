@@ -117,7 +117,7 @@ def factorize(compnum,candidate=2):
 #             process
 #           nms.- multiprocessing Namespace to share variables with the outside processes.
 #           loc.- a multiprocessing Lock to controll access to own_results
-#           event.- An event objecto to use along with signal to control the passing of
+#           event.- An event object to use along with signal to control the passing of
 #               info to the factorize broker, before dying
 #           candidate.- The first candidate to start looking for factors
 #           last_candidate.- The last candidate to try
@@ -304,6 +304,7 @@ def signal_show_current_status(signum,stack):
    print "\tFactors found so far:",local_vars['own_results']
    print "\tLast candidate:",local_vars['candidate']
    local_vars['nms'].last_candidate=local_vars['candidate']
+   local_vars['nms'].compnum=local_vars['compnum']
    t_so_far=time.time()
    print "\tTime used:", round(t_so_far-t_start,3),"seconds"
    local_vars['event'].set()
@@ -358,33 +359,63 @@ def factor_broker(num_to_factor,bottom,top,segments):
     factor_eng=list() #This is a complex data structure used to keep information along
     #the processes.  Each element in the list represents a factoring process and it's
     #made of the following elements:
-    #-own_results.- a multiprocessing shared list to store the found factors by the
+    #[0].-own_results.- a multiprocessing shared list to store the found factors by the
     #       process in the segment
-    #-job.- the handler to the process itself
-    #-nms.- a multiprocessing shared namespace used to return variables from the
+    #[1].-job.- the handler to the process itself
+    #[2].-nms.- a multiprocessing shared namespace used to return variables from the
     #       processes.
-    #-loc.- a multiprocessing Lock to control de update of the own_results list, the
+    #[3].-loc.- a multiprocessing Lock to control de update of the own_results list, the
     #       number to factor, the max candidate, and avoid the premature exit of the
     #       process when it is being relaunched
-    #-event.- a multiprocessing Event to signal the factor broker that a process in the
+    #[4].-event.- a multiprocessing Event to signal the factor broker that a process in the
     #       middle of being relaunched, is ready for termination
+    phase1_time=10 #Time to run to get speed of candidate test in this machine
+    max_segments=100 #Maximun number of limits
+    max_multiplier=10 #Maximun multiplier for the amount of candidates in a segment
     results_dirty=list() #A list of lists with the results of every segment
     num_cpus=multiprocessing.cpu_count() #Number of CPUs in this computer
     max_candidate=int(math.ceil(math.sqrt(num_to_factor))) #Square root of the number to factor
     top=min(top,max_candidate) #The last possible candidate is the minimum between this two
+    segments=list() #Empty segment list
     if not segments:#No segments passed in the command line
-        segments=get_problem_segments(bottom,top,num_cpus)
+        factor_eng.append(create_process(num_to_factor,manager,bottom,top))
+        factor_eng[0][1].start()
+        factor_eng[0][1].join(phase1_time) #Run the process for 10 seconds
+        if not factor_eng[0][2].mis_acomplish: #If factoring is not done
+            factor_eng[0][3].acquire()
+            factor_eng[0][1].join(0.1) #Just in case it finished between the if and the acquire
+            factor_eng[0][4].clear() #Clear the event in case it was set from the shell
+            os.kill(factor_eng[0][1].pid,signal.SIGUSR1)
+            factor_eng[0][4].wait()
+            factor_eng[0][1].terminate()
+            #There might be a new number to factor here, because we migth have found some factors
+            candidates_processed= (factor_eng[0][2].last_candidate) - bottom
+            if arguments.verbose: print "Candidates processed:",candidates_processed
+            remaining_candidates= int(math.ceil(math.sqrt(factor_eng[0][2].compnum))) - factor_eng[0][2].last_candidate
+            if arguments.verbose: print "Remaining candidates:",remaining_candidates
+            groups_of_candidates= remaining_candidates / candidates_processed
+            if groups_of_candidates > max_segments:
+                seg_mul_computed= remaining_candidates / (max_segments*candidates_processed)
+                segment_multiplier=min(max_multiplier,seg_mul_computed)
+                candidates_per_segment=segment_multiplier*candidates_per_segment
+            else:
+                candidates_per_segment=candidates_processed
+            print "Candidates per segment:",candidates_per_segment
+            while
+
+
+
+
+
+
+            exit(0)
+        #segments=get_problem_segments(bottom,top,num_cpus)
     if arguments.verbose: print "segments",segments
     for i in segments: #The number of segments defines the number of processes
-        own_results=manager.list() #The list of found factars in this segment, one for every process
-        nms=manager.Namespace() #Namespace to create variables across processes, one for every process
-        loc=Lock() #A lock to controll access to results (factors found), one for every process
-        event=Event() #An event object to set when the process is ready to dye, one for every process
-        job=Process(target=factorize_with_limits,args=(num_to_factor,own_results,nms,loc,event,i[0],i[1]))
-        factor_eng.append([own_results,job,nms,loc,event])
-        job.start()
+        factor_eng.append(create_process(num_to_factor,manager,i[0],i[1]))
+        factor_eng[-1][1].start()
         if arguments.verbose:
-            print "Starting process:",job.pid
+            print "Starting process:",factor_eng[-1][1].pid
     Terminator=False
     for idx,j in enumerate(factor_eng):#Wait for all the processes to finish
         if not Terminator:
@@ -398,20 +429,15 @@ def factor_broker(num_to_factor,bottom,top,segments):
                 factor_eng[idx+1][1].join(1) #Needed to give a chance to a finished process to bow out
                 if factor_eng[idx+1][1].is_alive():
                     print "Send a signal to stop to the next process pid:",factor_eng[idx+1][1].pid
-                    factor_eng[idx+1][4].clear() #In case it was set from the shell
+                    factor_eng[idx+1][4].clear() #Clear the event in case it was set from the shell
                     os.kill(factor_eng[idx+1][1].pid,signal.SIGUSR1)
                     factor_eng[idx+1][4].wait()
                     factor_eng[idx+1][1].terminate()
-                    own_results=factor_eng[idx+1][0] #Reuse the old own_results in case it has factors in it, unprobable
-                    nms=manager.Namespace() #Namespace to create variables across processes
-                    loc=Lock() #A lock to controll access to results (factors found)
-                    event=Event() #An event object to set when the process is ready to dye
                     print "num_to_factor=",j[0][-1]
-                    print "first candidate:",factor_eng[idx+1][2].last_candidate
+                    print "New first candidate:",factor_eng[idx+1][2].last_candidate
                     print "end of segment:",segments[idx+1][1]
-                    job=Process(target=factorize_with_limits,args=(j[0][-1],own_results,nms,loc,event,factor_eng[idx+1][2].last_candidate,segments[idx+1][1]))
-                    factor_eng[idx+1]=[own_results,job,nms,loc,event]
-                    job.start()
+                    factor_eng[idx+1]=create_process(j[0][-1],manager,factor_eng[idx+1][2].last_candidate,segments[idx+1][1])
+                    factor_eng[idx+1][1].start()
                     print "Relaunched the process with new parameters:"
                 else:
                     print "Process is not alive anymore"
@@ -422,6 +448,21 @@ def factor_broker(num_to_factor,bottom,top,segments):
     if arguments.verbose: print "Unfiltered results:",results_dirty
     return clean_results(results_dirty,num_to_factor)
     
+
+#Parameters: num_to_factor.- The number to factor
+#            manager.- a multiprocessing manager to share variables among processes
+#            first_candidate.- The start of the segment for this process
+#            last_candidate.- The end of the segment for this process
+def create_process(num_to_factor,manager,first_candidate,last_candidate):
+    '''Creates a process and its accompanying variables'''
+    own_results=manager.list() #The list of found factars in this segment, one for every process
+    nms=manager.Namespace() #Namespace to create variables across processes, one for every process
+    loc=Lock() #A lock to controll access to results (factors found), one for every process
+    event=Event() #An event object to set when the process is ready to dye, one for every process
+    job=Process(target=factorize_with_limits,args=(num_to_factor,own_results,nms,loc,event,first_candidate,last_candidate))
+    return [own_results,job,nms,loc,event]
+
+
 #####MAIN#######
 
 #pdb.set_trace()  #Uncomment to debug
