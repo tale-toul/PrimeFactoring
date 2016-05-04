@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 2.2.3
+#Version 2.3.0
 
 import sys
 import time
@@ -243,7 +243,7 @@ def parse_arguments():
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
     parser.add_argument("-c", "--firstcandi", help="First candidate to start factoring the number", type=int)
     parser.add_argument("-l", "--lastcandi", help="Last candidate to check for primes", type=int)
-    parser.add_argument("--segments", help="Define the segment limits for the factoring processes", nargs='*', type=int)
+    parser.add_argument("--segments", help="Define the number of segments and theirlimits for the factoring processes", nargs='*', type=int)
     disjunt.add_argument("--addtest", metavar="FILE",  help="Adds the results of factoring this number, as a test case, to the file specified")
     disjunt.add_argument("--runtest", metavar="FILE", help="Run the test cases")
     return(parser.parse_args()) 
@@ -418,7 +418,7 @@ def factor_broker(num_to_factor,bottom,top,segments):
         else:
             j[1].terminate()
     for r in factor_eng: #Collect the factors found in each segment
-        results_dirty.append(r[0][:])
+        results_dirty.append(r[0][:]) #Get the results from every process
     if arguments.verbose: print "Unfiltered results:",results_dirty
     return clean_results(results_dirty,num_to_factor)
     

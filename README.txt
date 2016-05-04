@@ -1327,6 +1327,7 @@ segmento más lento, que será el que tenga menos (nigún) factores en él.
 
 
 PARALELISMO SECUENCIAL
+Branch 2.2
 
 Para evitar el problema de la lentitud de factorización en los números compuesto por
 múltiples primos vamos a definir un método que tenga en cuenta la finalización de los
@@ -1352,7 +1353,7 @@ del espacio de posibles factores.
  entonces marcamos el proceso total de factorización como completado y se termina el
  programa.
 
--Si al terminar el primer proceso no se ha terminado con la factorización pero sí se ha
+-Si al terminar el primer proceso no se ha terminado la factorización pero sí se ha
  encontrado algún factor, sabemos que estos factores son primos y que el resultado de
  dividir el número original entre los factores encontrados es menor que el original y por
  lo tanto es un problema más facil y rápido de solucionar.  
@@ -1377,9 +1378,60 @@ del espacio de posibles factores.
 -A continuación construimos un nuevo proceso 2 con los valores actualizados: un nuevo
  número a factorizar y un nuevo candidato inicial.  El candidato final se mantiene igual,
  y dentro del proceso se calculará un nuevo candidato máximo a partir del nuevo número a
- factorizar 
+ factorizar. Si este proceso había encontrado algún factor lo mantengo en la lista de
+ factores del proceso a relanzar.
 
 Cuando el segundo proceso termina repetimos el proceso con respecto al tercero, y cuando
 el tercero termina lo repetimos con respecto al cuarto.  Cuando el cuarto termina, si es
 que hemos llegado tan lejos se ha completado la factorización.
 
+Dado que el número de segmentos es muy pequeño, puesto que equivale al número de
+cores/cpus de la máquina, esta mejora de "paralelismo secuencial" solo supone una ventaja
+en casos muy particulares.  Lo más probable es que los factores se encuentren en uno solo
+de los segmentos y que este sea el primero, en cuyo caso la factorización terminará
+rápido.  Si hay factores en segmentos superiores, estos segmentos terminarán antes que
+los inferiores, por ser los factores mayores y al dividir el número a factorizar el
+problema en este segmento se reduce más rápido.
+
+
+
+
+
+ATOMIZADO DEL PARALELISMO
+Versión 2.3
+
+Para aprovechar mejor el código del paralelismo secuencial vamos a dividir el problema en
+un número mayor de segmentos.  Al haber más segmentos, estos serán más pequeños, la
+busqueda dentro de ellos terminará más rápido, y podremos aprovechar mejor la potencia de
+la máquina en factorizaciones de números grandes.
+
+Por ejemplo si tenemos 10 segmentos, y en el segmento 5 encontramos un factor que al
+dividir al número compuesto obtenemos un resultado que está por debajo de cadidato máximo
+global, esto implica que a partir de este segmento la factorización ha concluido, por lo
+tanto los segmentes del 5 en adelante se dan por procesados, y solo quedarían pendientes
+los segmentos del 1 al 4.
+
+Una cuestión que surge es ¿Que tamaño deben tener los segmentos? Dependiendo de la
+potencia de la máquina estos tendrán un tamaño distinto.  Para una máquina más potente
+los segmentos serán mayores, y para una menos potente serán menores.
+
+Para conseguir esta funcionalidad debemos modificar sustancialmente el funcionamiento del
+programa:
+
+-En primer lugar lanzamos un proceso de factorización que se ejecutará por un tiempo
+ determinado definible por el usuario, por ejemplo 15 segundos.  Si la factorización se
+ ha completado en este tiempo, acabamos el programa.  Si no ha acabado calculamos el
+ porcentaje de candidatos  con respecto al total que faltan, que se han procesado en este
+ tiempo, y a partir de este valor y de cuantos faltan por revisar definimos el número de
+ segmentos.
+
+-Una vez definidos los segmentos, creamos un proceso de factorización por cada segmento
+ y los añadimos a una lista.  Esta lista contendrá un tipo de dato complejo para
+ soportar las operaciones de factorización y control de los procesos.
+ De esta lista iremos cogiendo procesos y lanzandolos, quizá de forma aleatoria.
+ Tendremos tantos procesos concurrentes como CPUs tenga la máquina. Necesitamos una lista
+ adicional para guardar los procesos en ejecución.
+ La existencia de dos listas: procesos en ejecución y procesos por segmento, hace que sea
+ necesario definir bloqueos, eventos y demás mecanismos de sincronización.
+ El proceso de factorización obtendrá los factores encontrados en cada segmento y
+ anulará aquellos procesos que como hemos visto antes queden obsoletos.
