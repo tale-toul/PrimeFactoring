@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 2.3.0
+#Version 2.3.1
 
 import sys
 import time
@@ -11,7 +11,7 @@ import signal
 import inspect
 import math
 import multiprocessing
-from multiprocessing import Process,Manager,Lock,Event
+from multiprocessing import Process,Manager,Lock,Event,Condition
 #import pdb
 
 factors=list() #List of number's found factors
@@ -116,14 +116,16 @@ def factorize(compnum,candidate=2):
 #             function.  Belongs to a multiprocessing Manager so it's visible outside the
 #             process
 #           nms.- multiprocessing Namespace to share variables with the outside processes.
-#           loc.- a multiprocessing Lock to controll access to own_results
+#           loc.- multiprocessing Lock to controll access to own_results
 #           event.- An event object to use along with signal to control the passing of
 #               info to the factorize broker, before dying
+#           cond.- multiprocessing condition used to signal the parent process that this
+#               process has finished
 #           candidate.- The first candidate to start looking for factors
 #           last_candidate.- The last candidate to try
 #Return:  the list of factors
 #The core functionality of program, finds the prime factors of compnum
-def factorize_with_limits(compnum,own_results,nms,loc,event,candidate=2,last_candidate=2):
+def factorize_with_limits(compnum,own_results,nms,loc,event,cond,candidate=2,last_candidate=2):
     increments_dict={'7':[2,2,2,4],
                      '9':[2,2,4,2],
                      '1':[2,4,2,2],
@@ -162,7 +164,7 @@ def factorize_with_limits(compnum,own_results,nms,loc,event,candidate=2,last_can
             max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
             loc.release()
         candidate += 2 #Now candidate equals 5
-    if candidate ==4: candidate =5 #Upgrade to the next meaninful candidate
+    if candidate == 4: candidate = 5 #Upgrade to the next meaninful candidate
     if candidate == 5: #This condition is here because the initial value of candidate may be different from 2
         while compnum%candidate == 0:
             loc.acquire()
@@ -203,8 +205,11 @@ def factorize_with_limits(compnum,own_results,nms,loc,event,candidate=2,last_can
         candidate += increment[3] #This increment depends on the incremnet list selected bejore
     loc.acquire()
     if compnum != 1: own_results.append(compnum)
-    if candidate > int(math.ceil(math.sqrt(compnum))):
+    if candidate > int(math.ceil(math.sqrt(compnum))):#Last candidate tried is bigger than maximum local candidate
         nms.mis_acomplish=True
+    cond.acquire()
+    cond.notify()
+    cond.release()
     loc.release()
 
 
@@ -310,24 +315,6 @@ def signal_show_current_status(signum,stack):
    local_vars['event'].set()
 
 
-#Parameters: number_of_segments.- The number of divisions to make
-#           bottom.- first number to start looking for factors
-#           top.- last number to look for factors
-#Return value.- A list of tuples with the starting and ending number of every segment
-def get_problem_segments(bottom,top,number_of_segments):
-    '''Divide the problem into different segments'''
-    segments=list()
-    start_of_segment=bottom
-    segment_size=int(math.ceil((top-bottom) / float(number_of_segments)))
-    for x in range(number_of_segments):
-        end_of_segment=start_of_segment+segment_size
-        one_segment=(start_of_segment,end_of_segment)
-        segments.append(one_segment)
-        start_of_segment=end_of_segment+1
-    return segments
-
-
-
 #Parameters: results_to_clean.- list of lists with the results returned by the factoring
 #                               of the different segments
 #           num_to_factor.- The number to factor, is needed as a reference to clean up the
@@ -356,6 +343,8 @@ def factor_broker(num_to_factor,bottom,top,segments):
     '''Divides the factoring problem in as many equal segments as CPUs are in the computer
     running the program.  Calls the factorize function for the smaller problems'''
     manager=Manager() #To access common elements among processes
+    cond_loc=Lock()
+    cond=Condition(cond_loc)
     factor_eng=list() #This is a complex data structure used to keep information along
     #the processes.  Each element in the list represents a factoring process and it's
     #made of the following elements:
@@ -369,6 +358,7 @@ def factor_broker(num_to_factor,bottom,top,segments):
     #       process when it is being relaunched
     #[4].-event.- a multiprocessing Event to signal the factor broker that a process in the
     #       middle of being relaunched, is ready for termination
+    #[5].-segment.- the candidate space for this process
     phase1_time=10 #Time to run to get speed of candidate test in this machine
     max_segments=100 #Maximun number of limits
     max_multiplier=10 #Maximun multiplier for the amount of candidates in a segment
@@ -376,11 +366,11 @@ def factor_broker(num_to_factor,bottom,top,segments):
     num_cpus=multiprocessing.cpu_count() #Number of CPUs in this computer
     max_candidate=int(math.ceil(math.sqrt(num_to_factor))) #Square root of the number to factor
     top=min(top,max_candidate) #The last possible candidate is the minimum between this two
-    if segments is not None:#No segments passed in the command line
+    if len(segments)==0:#No segments passed in the command line
         #If there are no segments defined so far, a factoring process is created and run
         # for an specific amount of time to meassure how many factors the program can
         # process in that time.  With that data the segments are created
-        factor_eng.append(create_process(num_to_factor,manager,bottom,top))
+        factor_eng.append(create_process(num_to_factor,manager,cond,(bottom,top)))
         factor_eng[0][1].start()
         factor_eng[0][1].join(phase1_time) #Run the process for a specific period of time
         if not factor_eng[0][2].mis_acomplish: #If factoring is not done
@@ -397,37 +387,69 @@ def factor_broker(num_to_factor,bottom,top,segments):
             remaining_candidates=l_candidate - factor_eng[0][2].last_candidate
             if arguments.verbose: print "Remaining candidates:",remaining_candidates
             groups_of_candidates= remaining_candidates / candidates_processed 
-            if groups_of_candidates > max_segments: #@Try this posibility@#
-                seg_mul_computed= remaining_candidates / (max_segments*candidates_processed)
+            if groups_of_candidates > max_segments:
+                seg_mul_computed=remaining_candidates / float(max_segments*candidates_processed)
                 segment_multiplier=min(max_multiplier,seg_mul_computed)
-                candidates_per_segment=segment_multiplier*candidates_per_segment
+                candidates_per_segment=int(math.ceil(segment_multiplier*candidates_processed))
             else:
                 candidates_per_segment=candidates_processed
             print "Candidates per segment:",candidates_per_segment
-            segment_low_limit=bottom
+            print "Last candidate:", l_candidate
+            segment_low_limit=factor_eng[0][2].last_candidate
             segment_high_limit=min(segment_low_limit + candidates_per_segment,l_candidate) 
             segments.append((segment_low_limit,segment_high_limit))
             while segment_high_limit < l_candidate:
-                segment_low_limit += segment_high_limit + 1
+                segment_low_limit = segment_high_limit + 1
                 segment_high_limit=min(segment_low_limit + candidates_per_segment,l_candidate) 
                 segments.append((segment_low_limit,segment_high_limit))
-            print "Segments:",segments
+    print "Number of segments:", len(segments),"\nSegments:",segments
+    cond.acquire()
+    slots=num_cpus
+    running_processes=list()
+    while segments: #While there are segments available
+        while slots: #While there are slots available
+            factor_eng.append(create_process(num_to_factor,manager,cond,segments.pop(0)))
+            running_processes.append(factor_eng[-1])
+            factor_eng[-1][1].start()
+            if arguments.verbose:
+                print "Starting process:",factor_eng[-1][1].name,factor_eng[-1][5]
+            slots -=1
+        cond.wait() #Wait for any of the factoring process to finish
+        print "Woken up:"
+        for idx,proc in enumerate(running_processes): #Look for the finished process
+            proc[1].join(0.1)
+            if not proc[1].is_alive():
+                print "Process is finished:",proc[1].name,proc[0],proc[5]
+                if proc[2].mis_acomplish: #No more factoring above this segment
+                    print "Mission accomplished from here!"
+                    seg_idx=0
+                    found_segment=False
+                    while seg_idx < len(segments) and not found_segment:
+                        if segments[seg_idx][0] > proc[5][1]: #Delete from this segment forward 
+                            found_segment=True
+                        else:
+                            seg_idx+=1
+                    if found_segment and seg_idx > 0:
+                        segments=segments[:seg_idx]
+                    elif found_segment and seg_idx == 0:
+                        segments=[]
+                slots +=1
+                running_processes.pop(idx)
+                break #Out of the for loop
+    cond.release()
+    for last_proc in running_processes:
+        last_proc[1].join()
+        print "Process is finished:",last_proc[1].name,last_proc[0],last_proc[5]
 
 
 
-            exit(0)
-        #segments=get_problem_segments(bottom,top,num_cpus)
-    if arguments.verbose: print "segments",segments
-    for i in segments: #The number of segments defines the number of processes
-        factor_eng.append(create_process(num_to_factor,manager,i[0],i[1]))
-        factor_eng[-1][1].start()
-        if arguments.verbose:
-            print "Starting process:",factor_eng[-1][1].pid
+    exit(0)
+
     Terminator=False
     for idx,j in enumerate(factor_eng):#Wait for all the processes to finish
         if not Terminator:
             j[1].join()
-            if j[2].mis_acomplish: #If the number is completly factored, terminate the resto of processes
+            if j[2].mis_acomplish: #If the number is completly factored, terminate the rest of the processes
                 Terminator=True
             elif len(j[0]) > 1: #Found factors in this segment
                 print "Found factors in",j[1].name,"PID=",j[1].pid, j[0]
@@ -443,12 +465,12 @@ def factor_broker(num_to_factor,bottom,top,segments):
                     print "num_to_factor=",j[0][-1]
                     print "New first candidate:",factor_eng[idx+1][2].last_candidate
                     print "end of segment:",segments[idx+1][1]
-                    factor_eng[idx+1]=create_process(j[0][-1],manager,factor_eng[idx+1][2].last_candidate,segments[idx+1][1])
+                    factor_eng[idx+1]=create_process(j[0][-1],manager,cond,(factor_eng[idx+1][2].last_candidate,segments[idx+1][1]))
                     factor_eng[idx+1][1].start()
                     print "Relaunched the process with new parameters:"
                 else:
                     print "Process is not alive anymore"
-        else:
+        else: #Terminate the rest of processes
             j[1].terminate()
     for r in factor_eng: #Collect the factors found in each segment
         results_dirty.append(r[0][:]) #Get the results from every process
@@ -458,16 +480,16 @@ def factor_broker(num_to_factor,bottom,top,segments):
 
 #Parameters: num_to_factor.- The number to factor
 #            manager.- a multiprocessing manager to share variables among processes
-#            first_candidate.- The start of the segment for this process
-#            last_candidate.- The end of the segment for this process
-def create_process(num_to_factor,manager,first_candidate,last_candidate):
+#            segment.- the segment limiting the group of candidates to try
+#            condition.- multiprocessing condition
+def create_process(num_to_factor,manager,cond,segment):
     '''Creates a process and its accompanying variables'''
     own_results=manager.list() #The list of found factars in this segment, one for every process
     nms=manager.Namespace() #Namespace to create variables across processes, one for every process
     loc=Lock() #A lock to controll access to results (factors found), one for every process
     event=Event() #An event object to set when the process is ready to dye, one for every process
-    job=Process(target=factorize_with_limits,args=(num_to_factor,own_results,nms,loc,event,first_candidate,last_candidate))
-    return [own_results,job,nms,loc,event]
+    job=Process(target=factorize_with_limits,args=(num_to_factor,own_results,nms,loc,event,cond,segment[0],segment[1]))
+    return [own_results,job,nms,loc,event,segment]
 
 
 #####MAIN#######
