@@ -105,8 +105,8 @@ def factorize(compnum,candidate=2):
         return pfactors #In the end at least pfactors contains compnum
     except KeyboardInterrupt:
         print "Program interrupted by user"
-        print "Factors found so far:",pfactors
-        print "Last candidate:",candidate
+        print "Factors found so far: %s"%pfactors
+        print "Last candidate tried: %d"%candidate
         raise
 
 
@@ -304,14 +304,14 @@ def run_test_cases(batch_file):
 #We never call this function, it is called by the signal handler
 def signal_show_current_status(signum,stack):
    (args,varargs,keywords,local_vars)=inspect.getargvalues(stack)
-   print "Received signal",signum
+   print "Received signal %d" % signum
    #print "local_vars:",local_vars #Dump the local_vars dictionary
-   print "\tFactors found so far:",local_vars['own_results']
-   print "\tLast candidate:",local_vars['candidate']
+   print "\tFactors found so far: %s"%local_vars['own_results']
+   print "\tLast candidate tried: %d"%local_vars['candidate']
    local_vars['nms'].last_candidate=local_vars['candidate']
    local_vars['nms'].compnum=local_vars['compnum']
    t_so_far=time.time()
-   print "\tTime used:", round(t_so_far-t_start,3),"seconds"
+   print "\tTime used: %.2f" % round(t_so_far-t_start,3),"seconds"
    local_vars['event'].set()
 
 
@@ -382,10 +382,10 @@ def factor_broker(num_to_factor,bottom,top,segments):
             factor_eng[0][1].terminate()
             #There might be a new composite number to factor here
             candidates_processed= (factor_eng[0][2].last_candidate) - bottom
-            if arguments.verbose: print "Candidates processed in phase 1:",candidates_processed
+            if arguments.verbose: print "Candidates processed in phase 1: %d" % candidates_processed
             l_candidate=int(math.ceil(math.sqrt(factor_eng[0][2].compnum)))
             remaining_candidates=l_candidate - factor_eng[0][2].last_candidate
-            if arguments.verbose: print "Remaining candidates:",remaining_candidates
+            if arguments.verbose: print "Remaining candidates: %d" % remaining_candidates
             groups_of_candidates= remaining_candidates / candidates_processed 
             if groups_of_candidates > max_segments:
                 seg_mul_computed=remaining_candidates / float(max_segments*candidates_processed)
@@ -406,8 +406,8 @@ def factor_broker(num_to_factor,bottom,top,segments):
     cond.acquire()
     slots=num_cpus
     running_processes=list()
-    while segments: #While there are segments available
-        while slots: #While there are slots available
+    while segments: # While there are segments available
+        while slots: # While there are slots available
             factor_eng.append(create_process(num_to_factor,manager,cond,segments.pop(0)))
             running_processes.append(factor_eng[-1])
             factor_eng[-1][1].start()
@@ -415,11 +415,11 @@ def factor_broker(num_to_factor,bottom,top,segments):
                 print "Starting process:",factor_eng[-1][1].name,factor_eng[-1][5]
             slots -=1
         cond.wait() #Wait for any of the factoring process to finish
-        print "Woken up:"
+        print "Woken up"
         for idx,proc in enumerate(running_processes): #Look for the finished process
             proc[1].join(0.1)
             if not proc[1].is_alive():
-                print "Process is finished:",proc[1].name,proc[0],proc[5]
+                print "Process %s is finished; factors %s; segment %s:" % (proc[1].name,proc[0],proc[5])
                 if proc[2].mis_acomplish: #No more factoring above this segment
                     print "Mission accomplished from here!"
                     seg_idx=0
@@ -529,7 +529,7 @@ if __name__ == '__main__':
                 print "Test case",arguments.num,"already present:",arguments.num,"=",test_cases[str(arguments.num)]
                 exit(2)
         if arguments.verbose:
-            print "+Number to factor=",arguments.num
+            print "+Number to factor=%d" % arguments.num
         t_start=time.time()
         try:
             factors=factor_broker(arguments.num,arguments.firstcandi,arguments.lastcandi,segments)
