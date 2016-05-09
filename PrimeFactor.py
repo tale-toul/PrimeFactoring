@@ -207,10 +207,10 @@ def factorize_with_limits(compnum,own_results,nms,loc,event,cond,candidate=2,las
     if compnum != 1: own_results.append(compnum)
     if candidate > int(math.ceil(math.sqrt(compnum))):#Last candidate tried is bigger than maximum local candidate
         nms.mis_acomplish=True
+    loc.release()
     cond.acquire()
     cond.notify()
     cond.release()
-    loc.release()
 
 
 #Parameters: compnum.- number to factor
@@ -373,14 +373,15 @@ def factor_broker(num_to_factor,bottom,top,segments):
         factor_eng.append(create_process(num_to_factor,manager,cond,(bottom,top)))
         factor_eng[0][1].start()
         factor_eng[0][1].join(phase1_time) #Run the process for a specific period of time
-        if not factor_eng[0][2].mis_acomplish: #If factoring is not done
-            factor_eng[0][3].acquire() #Lock the updates in the factoring process
+        factor_eng[0][3].acquire() #Lock the updates in the factoring process
+        if factor_eng[0][1].is_alive(): #If factoring is not done
             factor_eng[0][1].join(0.1) #Just in case it finished between the if and the acquire
             factor_eng[0][4].clear() #Clear the event in case it was set from the shell
             os.kill(factor_eng[0][1].pid,signal.SIGUSR1) #Send signal 10 to the process
             factor_eng[0][4].wait() #Wait for the process to gather and return its data
             factor_eng[0][1].terminate()
-            #There might be a new composite number to factor here
+            if factor_eng[0][2].compnum: #There might be a new composite number to factor here
+                num_to_factor=factor_eng[0][2].compnum
             candidates_processed= (factor_eng[0][2].last_candidate) - bottom
             if arguments.verbose: print "Candidates processed in phase 1: %d" % candidates_processed
             l_candidate=int(math.ceil(math.sqrt(factor_eng[0][2].compnum)))
@@ -402,6 +403,7 @@ def factor_broker(num_to_factor,bottom,top,segments):
                 segment_low_limit = segment_high_limit + 1
                 segment_high_limit=min(segment_low_limit + candidates_per_segment,l_candidate) 
                 segments.append((segment_low_limit,segment_high_limit))
+        if arguments.verbose: print "Factors found in phase 1: %s" % factor_eng[0][0]
     print "Number of segments:", len(segments),"\nSegments:",segments
     cond.acquire()
     slots=num_cpus
@@ -412,14 +414,15 @@ def factor_broker(num_to_factor,bottom,top,segments):
             running_processes.append(factor_eng[-1])
             factor_eng[-1][1].start()
             if arguments.verbose:
-                print "Starting process:",factor_eng[-1][1].name,factor_eng[-1][5]
+                print "Starting process %s in segment %s" % (factor_eng[-1][1].name,factor_eng[-1][5])
             slots -=1
         cond.wait() #Wait for any of the factoring process to finish
         print "Woken up"
         for idx,proc in enumerate(running_processes): #Look for the finished process
             proc[1].join(0.1)
+            proc[3].acquire()
             if not proc[1].is_alive():
-                print "Process %s is finished; factors %s; segment %s:" % (proc[1].name,proc[0],proc[5])
+                print "Process %s is finished, with factors %s in segment %s:" % (proc[1].name,proc[0],proc[5])
                 if proc[2].mis_acomplish: #No more factoring above this segment
                     print "Mission accomplished from here!"
                     seg_idx=0
@@ -433,9 +436,14 @@ def factor_broker(num_to_factor,bottom,top,segments):
                         segments=segments[:seg_idx]
                     elif found_segment and seg_idx == 0:
                         segments=[]
+                else: # Not mission accomplished
+                    if len(proc[0]) > 1: # There's at least one factor
+                        num_to_factor=proc[0][-1]
                 slots +=1
-                running_processes.pop(idx)
+                running_processes.pop(idx) # It's dead after all, remove it from the running processes list
                 break #Out of the for loop
+            else: #Release the lock
+                proc[3].release()
     cond.release()
     for last_proc in running_processes:
         last_proc[1].join()
