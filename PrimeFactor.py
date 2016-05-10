@@ -369,7 +369,7 @@ def factor_broker(num_to_factor,bottom,top,segments):
     if len(segments)==0:#No segments passed in the command line
         #If there are no segments defined so far, a factoring process is created and run
         # for an specific amount of time to meassure how many factors the program can
-        # process in that time.  With that data the segments are created
+        # process in that time.  Based on that data, the segments are created
         factor_eng.append(create_process(num_to_factor,manager,cond,(bottom,top)))
         factor_eng[0][1].start()
         factor_eng[0][1].join(phase1_time) #Run the process for a specific period of time
@@ -433,12 +433,9 @@ def factor_broker(num_to_factor,bottom,top,segments):
                         else:
                             seg_idx+=1
                     if found_segment and seg_idx > 0:
-                        segments=segments[:seg_idx]
+                        segments=segments[:seg_idx] #Same as "del segments[seg_idx:]"
                     elif found_segment and seg_idx == 0:
                         segments=[]
-                else: # Not mission accomplished
-                    if len(proc[0]) > 1: # There's at least one factor
-                        num_to_factor=proc[0][-1]
                 slots +=1
                 running_processes.pop(idx) # It's dead after all, remove it from the running processes list
                 break #Out of the for loop
