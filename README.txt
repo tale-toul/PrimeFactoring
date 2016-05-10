@@ -1329,7 +1329,7 @@ segmento más lento, que será el que tenga menos (nigún) factores en él.
 PARALELISMO SECUENCIAL
 Branch 2.2
 
-Para evitar el problema de la lentitud de factorización en los números compuesto por
+Para evitar el problema de la lentitud de factorización en los números compuestos por
 múltiples primos vamos a definir un método que tenga en cuenta la finalización de los
 segmentos de forma secuencial desde el primero.
 
@@ -1354,9 +1354,9 @@ del espacio de posibles factores.
  programa.
 
 -Si al terminar el primer proceso no se ha terminado la factorización pero sí se ha
- encontrado algún factor, sabemos que estos factores son primos y que el resultado de
- dividir el número original entre los factores encontrados es menor que el original y por
- lo tanto es un problema más facil y rápido de solucionar.  
+ encontrado algún factor, sabemos que estos factores son primos y que el número
+ resultante de dividir el número original entre los factores encontrados es menor que el
+ original y por lo tanto es más facil y rápido de factorizar.  
  
  Entonces vamos a parar el segundo proceso y relanzarlo con nuevos valores.
 
@@ -1406,32 +1406,78 @@ busqueda dentro de ellos terminará más rápido, y podremos aprovechar mejor la
 la máquina en factorizaciones de números grandes.
 
 Por ejemplo si tenemos 10 segmentos, y en el segmento 5 encontramos un factor que al
-dividir al número compuesto obtenemos un resultado que está por debajo de cadidato máximo
+dividir al número a factorizar nos da un resultado que está por debajo de cadidato máximo
 global, esto implica que a partir de este segmento la factorización ha concluido, por lo
 tanto los segmentes del 5 en adelante se dan por procesados, y solo quedarían pendientes
 los segmentos del 1 al 4.
 
-Una cuestión que surge es ¿Que tamaño deben tener los segmentos? Dependiendo de la
+Una cuestión que surge es ¿Que tamaño deben tener los segmentos?.  Dependiendo de la
 potencia de la máquina estos tendrán un tamaño distinto.  Para una máquina más potente
 los segmentos serán mayores, y para una menos potente serán menores.
 
-Para conseguir esta funcionalidad debemos modificar sustancialmente el funcionamiento del
-programa:
+Para calcular el tamaño de los segmentos hacemos lo siguiente:
 
--En primer lugar lanzamos un proceso de factorización que se ejecutará por un tiempo
- determinado definible por el usuario, por ejemplo 15 segundos.  Si la factorización se
- ha completado en este tiempo, acabamos el programa.  Si no ha acabado calculamos el
- porcentaje de candidatos  con respecto al total que faltan, que se han procesado en este
- tiempo, y a partir de este valor y de cuantos faltan por revisar definimos el número de
- segmentos.
+-En primer lugar lanzamos un proceso de factorización sobre el espacio completo de
+ candidatos, que se ejecutará por un tiempo determinado, definible por el usuario, por
+ ejemplo 10 segundos.  Si la factorización se ha completado en este tiempo, el programa
+ termina. Si no se ha completado calculamos los candidatos procesados en esta primera
+ fase, los que quedan por procesar hasta finalizar la factorización, dividimos los que
+ quedan por procesar entre los ya procesados y obtengo un posible número de segmentos.
+ Si este número supera al máximo definido en el programa, por ejemplo 100, calculamos un
+ multiplicador para aumentar el tamaño del segmento de tal manera que el número de
+ segmentos quede cerca del número máximo permitido.  Finalmente se generan los
+ segmentos, y si en la primera fase se ha encontrado algún factor se obtiene el nuevo
+ número a factorizar.
+ 
 
--Una vez definidos los segmentos, creamos un proceso de factorización por cada segmento
- y los añadimos a una lista.  Esta lista contendrá un tipo de dato complejo para
- soportar las operaciones de factorización y control de los procesos.
- De esta lista iremos cogiendo procesos y lanzandolos, quizá de forma aleatoria.
- Tendremos tantos procesos concurrentes como CPUs tenga la máquina. Necesitamos una lista
- adicional para guardar los procesos en ejecución.
- La existencia de dos listas: procesos en ejecución y procesos por segmento, hace que sea
- necesario definir bloqueos, eventos y demás mecanismos de sincronización.
- El proceso de factorización obtendrá los factores encontrados en cada segmento y
- anulará aquellos procesos que como hemos visto antes queden obsoletos.
+-Una vez definidos los segmentos, creamos un proceso de factorización por cada una de las
+ CPUs que tiene la máquina, tomando un segmento de candidatos de la lista para cada
+ proceso, y los lanzamos.  El proceso principal (padre) esperará a que termine cualquiera
+ de los procesos de factorizacion.  
+
+-Cuando un proceso de factorización termina, informa al padre, que comprueba si este
+ proceso ha revisado hasta el máximo candidato posible, no solo en su segmento sino a
+ nivel global del problema total.  Si es así se eliminan de la lista todos los segmentos
+ superiores al que se asignó a este proceso.  Una vez terminado un proceso de
+ factorización, si aun quedan segmentos por procesar, se crea un nuevo proceso de
+ factorización sobre uno de estos segmentos y se lanza.
+
+
+
+Debilidades del modelo v2.3
+
+El modelo basado en multiples segmentos de pequeño tamaño que se ejecutan en paralelo
+tiene un problema, y es que para aprovechar al máximo las CPUs de la máquina no esperamos
+que los procesos terminen en orden secuencial, como hacíamos hasta ahora, sino que en
+cuanto un proceso en ejecución termina, lanzamos otro nuevo sin esperar a que terminen
+los que viene antes según el orden de segmentos de factorización.  
+
+Si el proceso que termina no ha encontrado factores no hay problema, pero si se ha
+encontrado algún factor se nos presenta una situación complicada.  Si este proceso no es
+el primero en el conjunto de procesos en ejecución, no podemos asegurar que los factores
+encontrados sean números primos.  Si el proceso no ha revisado hasta el máximo candidato
+posible a nivel global, debemos seguir factorizando los segmentos posteriores, pero puesto
+que hemos encontrado algún factor, el número a factorizar debe ser el resultado de
+dividir el número original entre los factores encontrados.  Por otra parte para los
+posibles procesos anteriores el número a factorizar debe seguir siendo el original,
+puesto que el factor encontrado en el proceso "no ordenado" puede no ser primo.
+
+Por lo anterior se deduce que debemos lanzar los procesos de forma secuencial ordenada, y
+en ningún caso aleatoria.  Por ejemplo si tenemos 10 segmentos estos deben ser procesados
+del 1 al 10 en orden ascendente.  Si por ejemplo la máquina tiene 4 CPUs, tendremos 4
+procesos ejecutandose al mismo tiempo, y el proceso 3 termina antes que los procesos 1 y
+2, el nuevo proceso que debo lanzar será el 5, y luego el 6 y así sucesivamente.  Esto
+evitará que se produzcan problemas relacionados con distintos numeros a factorizar según
+el segmento que estemos revisando.
+
+El escenario que daría problemas con este modelo sería el que se produciría en el caso de
+lanzar los procesos de factorización de forma aleatoria sobre el espacio de segmentos.
+Por ejemplo para 10 segmentos y 2 CPUs, si procesamos los segmentos 1 y 5, y el segmento
+5 termina habiendo encontrado un factor X y el nuevo número a factorizar resultante es Y;
+para los segmentos del 6 al 10 (o hasta el que se llegue según los segmentos que defina
+el nuevo número Y) el nuevo número a factorizar es Y, pero para los segmentos del 2 al 4
+el número a factorizar debería ser X ó el número original.  Si ahora lanzo un proceso de
+factorización sobre el segmento 3 y este termina habiendo encontrado factores de nuevo
+tengo un número a factorizar distinto según el segmento sobre el que busque factores sea
+mayor o menor que el segmeto 3.
+

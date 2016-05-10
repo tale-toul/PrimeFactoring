@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 2.3.1
+#Version 2.3.2
 
 import sys
 import time
@@ -428,14 +428,19 @@ def factor_broker(num_to_factor,bottom,top,segments):
                     seg_idx=0
                     found_segment=False
                     while seg_idx < len(segments) and not found_segment:
-                        if segments[seg_idx][0] > proc[5][1]: #Delete from this segment forward 
-                            found_segment=True
+                        if segments[seg_idx][0] > proc[5][1]: 
+                            found_segment=True #Delete from this segment onward 
                         else:
                             seg_idx+=1
                     if found_segment and seg_idx > 0:
                         segments=segments[:seg_idx] #Same as "del segments[seg_idx:]"
+                        #@Might as well kill any process above this one, and restore the
+                        #@segments they were using@#
                     elif found_segment and seg_idx == 0:
                         segments=[]
+                else: # Not mission accomplished
+                    if len(proc[0]) > 1: # There's at least one factor
+                        num_to_factor=proc[0][-1]
                 slots +=1
                 running_processes.pop(idx) # It's dead after all, remove it from the running processes list
                 break #Out of the for loop
@@ -446,37 +451,6 @@ def factor_broker(num_to_factor,bottom,top,segments):
         last_proc[1].join()
         print "Process is finished:",last_proc[1].name,last_proc[0],last_proc[5]
 
-
-
-    exit(0)
-
-    Terminator=False
-    for idx,j in enumerate(factor_eng):#Wait for all the processes to finish
-        if not Terminator:
-            j[1].join()
-            if j[2].mis_acomplish: #If the number is completly factored, terminate the rest of the processes
-                Terminator=True
-            elif len(j[0]) > 1: #Found factors in this segment
-                print "Found factors in",j[1].name,"PID=",j[1].pid, j[0]
-                print "Aquire lock for the next process:",factor_eng[idx+1][1].name
-                factor_eng[idx+1][3].acquire()
-                factor_eng[idx+1][1].join(1) #Needed to give a chance to a finished process to bow out
-                if factor_eng[idx+1][1].is_alive():
-                    print "Send a signal to stop to the next process pid:",factor_eng[idx+1][1].pid
-                    factor_eng[idx+1][4].clear() #Clear the event in case it was set from the shell
-                    os.kill(factor_eng[idx+1][1].pid,signal.SIGUSR1)
-                    factor_eng[idx+1][4].wait()
-                    factor_eng[idx+1][1].terminate()
-                    print "num_to_factor=",j[0][-1]
-                    print "New first candidate:",factor_eng[idx+1][2].last_candidate
-                    print "end of segment:",segments[idx+1][1]
-                    factor_eng[idx+1]=create_process(j[0][-1],manager,cond,(factor_eng[idx+1][2].last_candidate,segments[idx+1][1]))
-                    factor_eng[idx+1][1].start()
-                    print "Relaunched the process with new parameters:"
-                else:
-                    print "Process is not alive anymore"
-        else: #Terminate the rest of processes
-            j[1].terminate()
     for r in factor_eng: #Collect the factors found in each segment
         results_dirty.append(r[0][:]) #Get the results from every process
     if arguments.verbose: print "Unfiltered results:",results_dirty
