@@ -366,7 +366,7 @@ def factor_broker(num_to_factor,bottom,top,segments):
     num_cpus=multiprocessing.cpu_count() #Number of CPUs in this computer
     max_candidate=int(math.ceil(math.sqrt(num_to_factor))) #Square root of the number to factor
     top=min(top,max_candidate) #The last possible candidate is the minimum between this two
-    if len(segments)==0:#No segments passed in the command line
+    if len(segments)==0:#No segments from the command line, then make them up
         #If there are no segments defined so far, a factoring process is created and run
         # for an specific amount of time to meassure how many factors the program can
         # process in that time.  Based on that data, the segments are created
@@ -409,20 +409,21 @@ def factor_broker(num_to_factor,bottom,top,segments):
     slots=num_cpus
     running_processes=list()
     while segments: # While there are segments available
+        slots=num_cpus - len(running_processes)
         while slots: # While there are slots available
             factor_eng.append(create_process(num_to_factor,manager,cond,segments.pop(0)))
             running_processes.append(factor_eng[-1])
             factor_eng[-1][1].start()
             if arguments.verbose:
-                print "Starting process %s in segment %s" % (factor_eng[-1][1].name,factor_eng[-1][5])
+                print "  +Starting process %s in segment %s" % (factor_eng[-1][1].name,factor_eng[-1][5])
             slots -=1
         cond.wait() #Wait for any of the factoring process to finish
-        print "Woken up"
+        print "Woken up at %.2f" % time.time()
         for idx,proc in enumerate(running_processes): #Look for the finished process
             proc[1].join(0.1)
             proc[3].acquire()
             if not proc[1].is_alive():
-                print "Process %s is finished, with factors %s in segment %s:" % (proc[1].name,proc[0],proc[5])
+                print "  -Process %s is finished, with factors %s in segment %s:" % (proc[1].name,proc[0],proc[5])
                 if proc[2].mis_acomplish: #No more factoring above this segment
                     print "Mission accomplished from here!"
                     seg_idx=0
@@ -441,9 +442,9 @@ def factor_broker(num_to_factor,bottom,top,segments):
                 else: # Not mission accomplished
                     if len(proc[0]) > 1: # There's at least one factor
                         num_to_factor=proc[0][-1]
-                slots +=1
+                #slots +=1
                 running_processes.pop(idx) # It's dead after all, remove it from the running processes list
-                break #Out of the for loop
+                #break #Out of the for loop
             else: #Release the lock
                 proc[3].release()
     cond.release()

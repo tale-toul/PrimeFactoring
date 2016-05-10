@@ -1021,8 +1021,8 @@ ejemplo:
     $ ./PrimeFactor.py -v 3644792236778694 -c 120 
     Factors of 3644792236778694 = [303, 42473, 283215626] In 0.0036 seconds
 
-El número 303 es un factor pero no es primo, es divible entre 3, que, este sí, es un
-factor primo del número original.
+El número 303 es un factor pero no es primo, es divible entre 3, que es un factor primo
+del número original.
 
 
 
@@ -1480,4 +1480,59 @@ el número a factorizar debería ser X ó el número original.  Si ahora lanzo u
 factorización sobre el segmento 3 y este termina habiendo encontrado factores de nuevo
 tengo un número a factorizar distinto según el segmento sobre el que busque factores sea
 mayor o menor que el segmeto 3.
+
+
+Pruebas con la versión 2.3.2
+
+-Nivel 16
+ 1-Número compuesto múltiple
+    3644792236778694 = [2, 3, 101, 42473, 141607813L] In 0.027 seconds
+
+    3644792236778694 = [2, 3, 101, 42473, 141607813L] In 0.1581 seconds
+ 2-Número compuesto por dos primos
+    3849788417036503 = [59423701, 64785403L] In 39.324 seconds
+
+    3849788417036503 = [59423701, 64785403L] In 21.8403 seconds
+ 3-Número primo
+    5332147896211517 = [5332147896211517L] In 49.0334 seconds
+
+    5332147896211517 = [5332147896211517L] In 22.9942 seconds
+
+Nivel batido
+
+-Nivel 17
+ 1-Número compuesto múltiple
+    64795512344765945 = [5, 31, 83, 157, 653, 49127233L] In 0.0039 seconds
+
+    64795512344765945 = [5, 31, 83, 157, 653, 49127233L] In 0.1259 seconds
+ 2-Número compuesto por dos primos
+    32563672784171761 = [67894373, 479622557L] In 45.8701 seconds    
+
+    32563672784171761 = [67894373, 479622557L] In 22.0377 seconds
+ 3-Número primo
+    55641397544639089 = [55641397544639089L] In 158.3416 seconds    
+
+    55641397544639089 = [55641397544639089L] In 67.2372 seconds
+
+Nivel batido
+
+-Nivel 18
+
+ 1-Número compuesto múltiple
+    954788612384655179 = [53077, 118429, 151894763L] In 0.0768 seconds
+
+    954788612384655179 = [53077, 118429, 151894763L] In 0.2071 seconds
+
+ 2-Número compuesto por dos primos
+    498542964342543929 = [652231511, 764365039L] In 145.8587 seconds
+
+    
+ 3-Número primo
+    546698741123646019 = [546698741123646019L] In 507.4415 seconds  
+    
+    546698741123646019 = [546698741123646019L] In 181.5399 seconds  
+
+
+
+
 
