@@ -5,23 +5,22 @@ import multiprocessing
 import time, random
 
 def condition_func(cond):
-    nap=random.randint(1,5)
+    nap=random.randint(1,4)
     print "Sleep time in process",multiprocessing.current_process().name,":",nap
     time.sleep(nap)
     cond.acquire()
-    print '\t' + str(cond)
-    time.sleep(0.5)
-    print '\tchild is notifying'
+    print '\t %s %f' % (str(cond) , time.time())
+    time.sleep(2.5)
+    print '\tchild is notifying at %f' % time.time()
     cond.notify_all()
     cond.release()
-    print '\t' + str(cond)
+    print '\t %s %f' % (str(cond) , time.time())
 
 def test_condition():
     loc=multiprocessing.Lock()
     cond = multiprocessing.Condition(loc)
     p = multiprocessing.Process(target=condition_func, args=(cond,))
     q = multiprocessing.Process(target=condition_func, args=(cond,))
-    print cond
     cond.acquire()
     print cond
     p.start()

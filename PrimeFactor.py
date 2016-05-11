@@ -131,6 +131,7 @@ def factorize_with_limits(compnum,own_results,nms,loc,event,cond,candidate=2,las
                      '1':[2,4,2,2],
                      '3':[4,2,2,2]}
     nms.mis_acomplish=False
+    nms.end_of_process=False
     increment=increments_dict['7'] #By default the 7 increment list is used
     max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
     if candidate > 5:
@@ -209,6 +210,8 @@ def factorize_with_limits(compnum,own_results,nms,loc,event,cond,candidate=2,las
         nms.mis_acomplish=True
     loc.release()
     cond.acquire()
+    nms.end_of_process=True
+    print "%s at %f" % (repr(cond), time.time())
     cond.notify()
     cond.release()
 
@@ -285,7 +288,7 @@ def run_test_cases(batch_file):
         for case in Ky: #case is a string
             if arguments.verbose: print case
             t_start=time.time()
-            factors=factor_broker(int(case),2,int(case),None)
+            factors=factor_broker(int(case),2,int(case),[])
             t_end=time.time()
             if factors == test_cases[case] and arguments.verbose: 
                 print "\t",factors, "Passed in",round(t_end-t_start,4),"seconds.", count,"of", test_cases_size
@@ -409,7 +412,6 @@ def factor_broker(num_to_factor,bottom,top,segments):
     slots=num_cpus
     running_processes=list()
     while segments: # While there are segments available
-        slots=num_cpus - len(running_processes)
         while slots: # While there are slots available
             factor_eng.append(create_process(num_to_factor,manager,cond,segments.pop(0)))
             running_processes.append(factor_eng[-1])
@@ -419,34 +421,30 @@ def factor_broker(num_to_factor,bottom,top,segments):
             slots -=1
         cond.wait() #Wait for any of the factoring process to finish
         print "Woken up at %.2f" % time.time()
+        temp_proc_list=list()
+        print "Running processes: %s" % running_processes
         for idx,proc in enumerate(running_processes): #Look for the finished process
-            proc[1].join(0.1)
+            proc[1].join(0.08)
             proc[3].acquire()
-            if not proc[1].is_alive():
+            if proc[2].end_of_process: #The process has finished factoring
                 print "  -Process %s is finished, with factors %s in segment %s:" % (proc[1].name,proc[0],proc[5])
                 if proc[2].mis_acomplish: #No more factoring above this segment
-                    print "Mission accomplished from here!"
-                    seg_idx=0
-                    found_segment=False
-                    while seg_idx < len(segments) and not found_segment:
-                        if segments[seg_idx][0] > proc[5][1]: 
-                            found_segment=True #Delete from this segment onward 
-                        else:
-                            seg_idx+=1
-                    if found_segment and seg_idx > 0:
-                        segments=segments[:seg_idx] #Same as "del segments[seg_idx:]"
-                        #@Might as well kill any process above this one, and restore the
-                        #@segments they were using@#
-                    elif found_segment and seg_idx == 0:
-                        segments=[]
+                    print "\tMission accomplished!"
+                    for dying_process in running_processes[idx+1:]: #Kill the remaining running processes
+                        print "killing %s" % dying_process[1].name
+                        dying_process[1].terminate()
+                    for seg_idx,segment in enumerate(segments): #Remove the remaining segments above this one
+                        if segment[0] > proc[5][1]: 
+                            del segments[seg_idx:] #Delete to the end of the list, so the for loop ends after this
+                    break # Don't care about the rest (dead processes)
                 else: # Not mission accomplished
                     if len(proc[0]) > 1: # There's at least one factor
                         num_to_factor=proc[0][-1]
-                #slots +=1
-                running_processes.pop(idx) # It's dead after all, remove it from the running processes list
-                #break #Out of the for loop
-            else: #Release the lock
+            else: #Keep this one
+                temp_proc_list.append(proc)
                 proc[3].release()
+        running_processes=temp_proc_list
+        slots = num_cpus - len(running_processes) 
     cond.release()
     for last_proc in running_processes:
         last_proc[1].join()
