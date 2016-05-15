@@ -1253,6 +1253,7 @@ función clean_results que devuelve solo los factores primos.
 
 
 Pruebas de rendimiento
+v 2.2
 
 -Nivel 17
  1-Número compuesto múltiple
@@ -1429,7 +1430,6 @@ Para calcular el tamaño de los segmentos hacemos lo siguiente:
  segmentos, y si en la primera fase se ha encontrado algún factor se obtiene el nuevo
  número a factorizar.
  
-
 -Una vez definidos los segmentos, creamos un proceso de factorización por cada una de las
  CPUs que tiene la máquina, tomando un segmento de candidatos de la lista para cada
  proceso, y los lanzamos.  El proceso principal (padre) esperará a que termine cualquiera
@@ -1438,19 +1438,62 @@ Para calcular el tamaño de los segmentos hacemos lo siguiente:
 -Cuando un proceso de factorización termina, informa al padre, que comprueba si este
  proceso ha revisado hasta el máximo candidato posible, no solo en su segmento sino a
  nivel global del problema total.  Si es así se eliminan de la lista todos los segmentos
- superiores al que se asignó a este proceso.  Una vez terminado un proceso de
- factorización, si aun quedan segmentos por procesar, se crea un nuevo proceso de
- factorización sobre uno de estos segmentos y se lanza.
+ superiores al que se asignó a este proceso, y se matan los procesos que están trabajando
+ en segmentos superiores.  Una vez terminado un proceso de factorización, si aun quedan
+ segmentos por procesar, se crea un nuevo proceso de factorización sobre uno de estos
+ segmentos y se lanza.
+
+
+
+Comunicación entre padre e hijos (Condiciones)
+
+Para que el padre se entere de cuando ha terminado un hijo, y pueda lanzar otro nuevo, se
+utiliza una variable de tipo "multiprocessing Condition" para sincronizar los procesos.
+Este tipo de variable es una combinación de Event y Lock, tienen un Lock que es necesario
+adquirir antes de realizar otras operacines y tiene un metodo notify que sirve para avisar
+a otros procesos.
+
+En este caso, el proceso padre, desde la función factor_broker, crea un objeto de tipo
+Lock que usa para crear un objeto de tipo Condition, este objeto Condition es compartido
+por todos los procesos, padre e hijos.
+
+El padre adquiere el Lock del objeto Condition llamando a su método acquire, entonces crea
+el primer grupo de procesos hijo (factorizadores) y libera el Lock llamando al metodo
+wait.  Esta llamada no solo libera el Lock sino que detiene la ejecución del proceso padre
+a la espera que de alguno de los hijos llame al método notify. 
+
+Cuando alguno de los hijos llega la final de su "tarea" intenta adquirir el Lock del
+objeto Condition, si no puede hacerlo se quedará esperando hasta que quede liberado por el
+proceso que lo tenga, si por el contrario lo puede adquirir, ejecutará algunas últimas
+ordenes y notifica al resto de procesos llamando al metodo notify; esta llamada provoca en
+los procesos que estan esperando, que despierten e intenten adquirir el Lock, que unos
+instantes depues es liberado por el mismo proceso que ha ejecutado notify, llamando al
+metodo release.  
+
+Lo ideal sería que el proceso padre fuera siempre el primero en ser notificado y
+adquiriera el Lock, sin embargo es muy probable que otro proceso hijo se
+adelante.  Como consecuencia de esto, cuando por fin el proceso padre adquiere el Lock de
+la condición, puede que haya más de un proceso hijo que ha terminaod y por lo tanto la
+busqueda de procesos finalizados no puede terminar en cuanto encontramos el primero.  Lo
+que hacemos es recorrer la lista de procesos en ejecución y guardar aquellos que aun están
+ejecutandose en otra lista temporal, los que no copiemos serán borrados por el recolector
+de basura.  Cuando se ha recorrido toda la lista y tenemos todos los procesos en ejecución
+en la lita temporal, copiamos esta sobre la lista de procesos en ejecución.  Esta es una
+forma efectiva de recorrer una lista y modificarla, ya que no es seguro recorrer una única
+lista y eliminar elementos intermedios de esta.
+
+
 
 
 
 Debilidades del modelo v2.3
 
+
 El modelo basado en multiples segmentos de pequeño tamaño que se ejecutan en paralelo
 tiene un problema, y es que para aprovechar al máximo las CPUs de la máquina no esperamos
 que los procesos terminen en orden secuencial, como hacíamos hasta ahora, sino que en
-cuanto un proceso en ejecución termina, lanzamos otro nuevo sin esperar a que terminen
-los que viene antes según el orden de segmentos de factorización.  
+cuanto un proceso en ejecución termina, lanzamos otro nuevo sin esperar que terminen
+los que viene antes, según el orden de segmentos de factorización.  
 
 Si el proceso que termina no ha encontrado factores no hay problema, pero si se ha
 encontrado algún factor se nos presenta una situación complicada.  Si este proceso no es
@@ -1458,9 +1501,10 @@ el primero en el conjunto de procesos en ejecución, no podemos asegurar que los
 encontrados sean números primos.  Si el proceso no ha revisado hasta el máximo candidato
 posible a nivel global, debemos seguir factorizando los segmentos posteriores, pero puesto
 que hemos encontrado algún factor, el número a factorizar debe ser el resultado de
-dividir el número original entre los factores encontrados.  Por otra parte para los
-posibles procesos anteriores el número a factorizar debe seguir siendo el original,
-puesto que el factor encontrado en el proceso "no ordenado" puede no ser primo.
+dividir el número original entre los factores encontrados, esto es bueno porque se reduce
+el problema para los procesos y segmentos posteriores.  Por otra parte para los posibles
+procesos anteriores el número a factorizar debe seguir siendo el original, puesto que el
+factor encontrado en el proceso "no ordenado" puede no ser primo.
 
 Por lo anterior se deduce que debemos lanzar los procesos de forma secuencial ordenada, y
 en ningún caso aleatoria.  Por ejemplo si tenemos 10 segmentos estos deben ser procesados
@@ -1482,7 +1526,7 @@ tengo un número a factorizar distinto según el segmento sobre el que busque fa
 mayor o menor que el segmeto 3.
 
 
-Pruebas con la versión 2.3.2
+Pruebas con la versión 2.3.3
 
 -Nivel 16
  1-Número compuesto múltiple
@@ -1516,6 +1560,7 @@ Nivel batido
 
 Nivel batido
 
+
 -Nivel 18
 
  1-Número compuesto múltiple
@@ -1525,14 +1570,51 @@ Nivel batido
  2-Número compuesto por dos primos
     498542964342543929 = [652231511, 764365039L] In 145.8587 seconds
 
-    498542964342543929 = [652231511, 764365039L] In 167.3065 seconds
+    498542964342543929 = [652231511, 764365039L] In 163.3792 seconds
  3-Número primo
-    546698741123646019 = [546698741123646019L] In 181.5399 seconds  
-
     546698741123646019 = [546698741123646019L] In 163.37 seconds
 
-Nivel batido
+    546698741123646019 = [546698741123646019L] In 172.9918 seconds
+
+Nivel batido.
 
 
+-Nivel 19
+ 1-Número compuesto múltiple
+    3689445781236985154 = [2, 7, 11, 37, 121267, 5339444219L] In 357.5535 seconds
+
+    3689445781236985154 = [2, 7, 11, 37, 121267, 5339444219L] In 0.2086 seconds
+ 2-Número compuesto por dos primos
+    2537675226119470571 = [548997653, 4622379007L] In 335.733 seconds
+
+    2537675226119470571 = [548997653, 4622379007L] In 136.3474 seconds
+ 3-Número primo
+    5977455832169755667 = [5977455832169755667L] In 685.0041 seconds
+
+    5977455832169755667 = [5977455832169755667L] In 558.3124 seconds
+
+Nivel batido.
 
 
+-Nivel 20
+ 1-Número compuesto múltiple
+    59774558321697556676 = [2, 2, 23, 2069, 314027771879387L] In 11.8885 seconds
+
+ 2-Número compuesto por dos primos
+    36579649644065170163 = [5568743671L, 6568743653L] In 1434.5462 seconds
+    25841129207805312677 = [3526889461L, 7326889457L] In 884.3702 seconds (casi 15 min.)
+
+ 3-Número primo
+    52369844786321568503 = [52369844786321568503L] In 1845.6705 seconds (30 minutos aprox.)
+
+Nivel batido.  Con las mejoras introducidas en esta versión 2.3 el rendimiento vuelve a
+ mejorar mucho en los números de tipo (1), ya que si un proceso completa la factorización
+ del número no se espera a que los demas procesos terminen, se los mata.  
+ 
+ En los números de tipo (2) puede mejorar o mantenerse similar, pero no empeorar; esto se
+ debe a que el proceso de factorización termina cuando se encuentran los factores primos,
+ y no hay que esperar a que acaben los otros procesos paralelos; dependiendo de lo pronto
+ que se encuentren los factores así de rápida será la factorización.  
+ 
+ En lo números de tipo (3) el tiempo de factorización no cambia sustancialmente, ya que
+ aquí hay que recorrer todo el espacio de candidatos.

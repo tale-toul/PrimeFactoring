@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 2.3.2
+#Version 2.3.3
 
 import sys
 import time
@@ -130,8 +130,6 @@ def factorize_with_limits(compnum,own_results,nms,loc,event,cond,candidate=2,las
                      '9':[2,2,4,2],
                      '1':[2,4,2,2],
                      '3':[4,2,2,2]}
-    nms.mis_acomplish=False
-    nms.end_of_process=False
     increment=increments_dict['7'] #By default the 7 increment list is used
     max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
     if candidate > 5:
@@ -211,7 +209,6 @@ def factorize_with_limits(compnum,own_results,nms,loc,event,cond,candidate=2,las
     loc.release()
     cond.acquire()
     nms.end_of_process=True
-    print "%s at %f" % (repr(cond), time.time())
     cond.notify()
     cond.release()
 
@@ -309,6 +306,7 @@ def signal_show_current_status(signum,stack):
    (args,varargs,keywords,local_vars)=inspect.getargvalues(stack)
    print "Received signal %d" % signum
    #print "local_vars:",local_vars #Dump the local_vars dictionary
+   local_vars['own_results'].append(local_vars['compnum'])
    print "\tFactors found so far: %s"%local_vars['own_results']
    print "\tLast candidate tried: %d"%local_vars['candidate']
    local_vars['nms'].last_candidate=local_vars['candidate']
@@ -345,10 +343,11 @@ def clean_results(results_to_clean,num_to_factor):
 def factor_broker(num_to_factor,bottom,top,segments):
     '''Divides the factoring problem in as many equal segments as CPUs are in the computer
     running the program.  Calls the factorize function for the smaller problems'''
+    orig_num_to_factor=num_to_factor #The original num_to_factor
     manager=Manager() #To access common elements among processes
     cond_loc=Lock()
     cond=Condition(cond_loc)
-    factor_eng=list() #This is a complex data structure used to keep information along
+    factor_eng=list() #This is a complex data structure used to keep information across
     #the processes.  Each element in the list represents a factoring process and it's
     #made of the following elements:
     #[0].-own_results.- a multiprocessing shared list to store the found factors by the
@@ -407,12 +406,12 @@ def factor_broker(num_to_factor,bottom,top,segments):
                 segment_high_limit=min(segment_low_limit + candidates_per_segment,l_candidate) 
                 segments.append((segment_low_limit,segment_high_limit))
         if arguments.verbose: print "Factors found in phase 1: %s" % factor_eng[0][0]
-    print "Number of segments:", len(segments),"\nSegments:",segments
+    if arguments.verbose: print "Number of segments: %d" % len(segments)
     cond.acquire()
-    slots=num_cpus
+    slots=min(num_cpus,len(segments))
     running_processes=list()
-    while segments: # While there are segments available
-        while slots: # While there are slots available
+    while segments: # While segments are available
+        while slots: # While slots are available
             factor_eng.append(create_process(num_to_factor,manager,cond,segments.pop(0)))
             running_processes.append(factor_eng[-1])
             factor_eng[-1][1].start()
@@ -422,7 +421,6 @@ def factor_broker(num_to_factor,bottom,top,segments):
         cond.wait() #Wait for any of the factoring process to finish
         print "Woken up at %.2f" % time.time()
         temp_proc_list=list()
-        print "Running processes: %s" % running_processes
         for idx,proc in enumerate(running_processes): #Look for the finished process
             proc[1].join(0.08)
             proc[3].acquire()
@@ -452,8 +450,7 @@ def factor_broker(num_to_factor,bottom,top,segments):
 
     for r in factor_eng: #Collect the factors found in each segment
         results_dirty.append(r[0][:]) #Get the results from every process
-    if arguments.verbose: print "Unfiltered results:",results_dirty
-    return clean_results(results_dirty,num_to_factor)
+    return clean_results(results_dirty,orig_num_to_factor)
     
 
 #Parameters: num_to_factor.- The number to factor
@@ -464,6 +461,8 @@ def create_process(num_to_factor,manager,cond,segment):
     '''Creates a process and its accompanying variables'''
     own_results=manager.list() #The list of found factars in this segment, one for every process
     nms=manager.Namespace() #Namespace to create variables across processes, one for every process
+    nms.mis_acomplish=False
+    nms.end_of_process=False
     loc=Lock() #A lock to controll access to results (factors found), one for every process
     event=Event() #An event object to set when the process is ready to dye, one for every process
     job=Process(target=factorize_with_limits,args=(num_to_factor,own_results,nms,loc,event,cond,segment[0],segment[1]))
@@ -514,6 +513,7 @@ if __name__ == '__main__':
         except KeyboardInterrupt:
             t_end=time.time()
             print "Time used",round(t_end-t_start,4),"seconds"
+            raise
             exit(3)
         t_end=time.time()
 
