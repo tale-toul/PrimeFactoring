@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 2.3.3
+#Version 2.3.4
 
 import sys
 import time
@@ -12,6 +12,7 @@ import inspect
 import math
 import multiprocessing
 from multiprocessing import Process,Manager,Lock,Event,Condition
+import gmpy2
 #import pdb
 
 factors=list() #List of number's found factors
@@ -24,91 +25,16 @@ segments=list()
 #stored in the variable num
 def validate_factors(num,factors):
     partial_result=1
-    for items in factors:
-        partial_result *= items
+    for item in factors:
+        if gmpy2.is_prime(item):
+            partial_result *= item
+        else:
+            print "%d is not prime" % (item,)
+            return False
     if partial_result == num:
         return True
     else:
         return False
-
-#Parameters: num.- An integer to factorize
-#           candidate.- The first candidate to start looking for factors
-#Return value.- the list of factors
-#The core functionality of program, finds the prime factors of compnum
-def factorize(compnum,candidate=2):
-    increments_dict={'7':[2,2,2,4],
-                     '9':[2,2,4,2],
-                     '1':[2,4,2,2],
-                     '3':[4,2,2,2]}
-    increment=increments_dict['7'] #By default the 7 increment list is used
-    max_candidate=int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-    pfactors=[] #List of found factors 
-    if candidate > 5:
-        text_candidate_last=str(candidate)[-1]
-#Place the candidate in the correct position; if the candidate ends in 7, 9, 1 or 3 do nothing
-        if text_candidate_last == '4' or text_candidate_last == '5' or text_candidate_last == '6':
-            text_candidate_last='7' #Bring it up to next number ending in 7
-        elif text_candidate_last == '8':
-            text_candidate_last='9' #Bring it up to next number ending in 9
-        elif text_candidate_last == '0':
-            text_candidate_last='1' #Bring it up to next number ending in 1
-        elif text_candidate_last == '2':
-            text_candidate_last='3' #Bring it up to next number ending in 3
-        candidate =int(str(candidate)[:-1]+text_candidate_last) #Add the new ending 
-#Now use the correct increment list
-        increment=increments_dict[text_candidate_last]
-    signal.signal(signal.SIGUSR1,signal_show_current_status) #Sets the handler for the signal SIGUSR1
-    try:
-        if candidate == 2: #This condition is here because the initial value of candidate may be different from 2
-            while compnum%candidate == 0:  #Candidate = 2, consider it as a special case
-                pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate =int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-            candidate += 1 #Now candidate equals 3
-        if candidate == 3: #This condition is here because the initial value of candidate may be different from 2
-            while compnum%candidate == 0: 
-                pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-            candidate += 2 #Now candidate equals 5
-        if candidate ==4: candidate =5 #Upgrade to the next meaninful candidate
-        if candidate == 5: #This condition is here because the initial value of candidate may be different from 2
-            while compnum%candidate == 0: 
-                pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-            candidate += 2 #Now candidate equals 7
-#----MAIN LOOP----
-        while candidate <= max_candidate: 
-            while compnum%candidate == 0: # For candidates ending in 7
-                pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-            candidate += increment[0] #This increment depends on the incremnet list selected bejore
-            while compnum%candidate == 0: #For candidates ending in 9
-                pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-            candidate += increment[1] #This increment depends on the incremnet list selected bejore
-            while compnum%candidate == 0: #For candidates ending in 1
-                pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-            candidate += increment[2] #This increment depends on the incremnet list selected bejore
-            while compnum%candidate == 0: #For candidates ending in 3
-                pfactors.append(candidate)
-                compnum /= candidate
-                max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
-            candidate += increment[3] #This increment depends on the incremnet list selected bejore
-        if compnum != 1: pfactors.append(compnum) 
-        signal.signal(signal.SIGUSR1,signal.SIG_DFL) #Sets the handler to its default state
-        return pfactors #In the end at least pfactors contains compnum
-    except KeyboardInterrupt:
-        print "Program interrupted by user"
-        print "Factors found so far: %s"%pfactors
-        print "Last candidate tried: %d"%candidate
-        raise
-
 
 
 #Parameters: compnum.- An integer to factorize
@@ -396,8 +322,8 @@ def factor_broker(num_to_factor,bottom,top,segments):
                 candidates_per_segment=int(math.ceil(segment_multiplier*candidates_processed))
             else:
                 candidates_per_segment=candidates_processed
-            print "Candidates per segment:",candidates_per_segment
-            print "Last candidate:", l_candidate
+            if arguments.verbose: print "Candidates per segment:",candidates_per_segment
+            if arguments.verbose: print "Last possible candidate:", l_candidate
             segment_low_limit=factor_eng[0][2].last_candidate
             segment_high_limit=min(segment_low_limit + candidates_per_segment,l_candidate) 
             segments.append((segment_low_limit,segment_high_limit))
@@ -446,8 +372,7 @@ def factor_broker(num_to_factor,bottom,top,segments):
     cond.release()
     for last_proc in running_processes:
         last_proc[1].join()
-        print "Process is finished:",last_proc[1].name,last_proc[0],last_proc[5]
-
+        print "\tProcess is finished:",last_proc[1].name,last_proc[0],last_proc[5]
     for r in factor_eng: #Collect the factors found in each segment
         results_dirty.append(r[0][:]) #Get the results from every process
     return clean_results(results_dirty,orig_num_to_factor)
@@ -533,4 +458,5 @@ if __name__ == '__main__':
             exit(0)
         else:
             print "The result is wrong, multiplying",factors,"doesn't yield",arguments.num
+            print "Or some factor is not prime"
             exit(-1)
