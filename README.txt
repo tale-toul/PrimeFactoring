@@ -1618,3 +1618,31 @@ Nivel batido.  Con las mejoras introducidas en esta versión 2.3 el rendimiento 
  
  En lo números de tipo (3) el tiempo de factorización no cambia sustancialmente, ya que
  aquí hay que recorrer todo el espacio de candidatos.
+
+
+
+PARALELISMO ALEATORIO
+Version 2.4
+
+En esta versión vamos a procesar los segmentos de forma aleatoria, en lugar de
+secuencial.  Aunque el primer pseudo-segmento siempre se ejecuta de forma secuencial en
+la fase 1
+
+-Los factores que se encuentren en la fase 1 se guardan como factores primos.
+-Cuando se encuentre un factor comprobaremos cuantas veces divide al número a factorizar
+ pero solo guardaremos una copia del factor
+-Tan pronto como se encuentre un factor en un segmento distinto al de la fase 1, se
+ detiene la factorización y se guardan en una cola dos nuevos números a factorizar: el
+ factor encontrado y el resultado de divivir el número a factorizar entre el factor
+ encontrado.
+-El candidato inicial para un nivel de factorización se actualizará tras la finalizacón de
+ la fase 1 y tras la finalización de un segmento que esté al principio de la lista (el más
+ bajo)
+-Cada candidato encolado, se guardará junto con su valor de candidato mínimo a partir
+ del cual buscar factores.  El valor del candidato mínimo es facil de obtener, es el menor
+ valor de menor segmento en la lista de segmentos pendientes de procesar.
+-The mission acomplished concept makes no sense anymore: either you found a factor and the
+ segment processing is done, or you didn't and the segment processing continues.  Just
+ store with the primer factors the number to factor remaining when all segments have been
+ processed.
+
