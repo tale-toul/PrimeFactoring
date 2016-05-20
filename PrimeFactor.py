@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 2.3.4
+#Version 2.4.0
 
 import sys
 import time
@@ -16,7 +16,6 @@ import gmpy2
 #import pdb
 
 factors=list() #List of number's found factors
-segments=list()
 
 #Parameters: num.- An integer 
 #            factors.- A list of integers
@@ -174,7 +173,6 @@ def parse_arguments():
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
     parser.add_argument("-c", "--firstcandi", help="First candidate to start factoring the number", type=int)
     parser.add_argument("-l", "--lastcandi", help="Last candidate to check for primes", type=int)
-    parser.add_argument("--segments", help="Define the number of segments and theirlimits for the factoring processes", nargs='*', type=int)
     disjunt.add_argument("--addtest", metavar="FILE",  help="Adds the results of factoring this number, as a test case, to the file specified")
     disjunt.add_argument("--runtest", metavar="FILE", help="Run the test cases")
     return(parser.parse_args()) 
@@ -211,7 +209,7 @@ def run_test_cases(batch_file):
         for case in Ky: #case is a string
             if arguments.verbose: print case
             t_start=time.time()
-            factors=factor_broker(int(case),2,int(case),[])
+            factors=factor_broker(int(case),2,int(case))
             t_end=time.time()
             if factors == test_cases[case] and arguments.verbose: 
                 print "\t",factors, "Passed in",round(t_end-t_start,4),"seconds.", count,"of", test_cases_size
@@ -265,10 +263,10 @@ def clean_results(results_to_clean,num_to_factor):
 #Parameters: num_to_factor.- The number to factor
 #            bottom.-First number of the set to start looking for factors
 #            top.- Last number of the set to look for factors
-#            segments.- list of tuples with the segments limits
-def factor_broker(num_to_factor,bottom,top,segments):
-    '''Divides the factoring problem in as many equal segments as CPUs are in the computer
-    running the program.  Calls the factorize function for the smaller problems'''
+def factor_broker(num_to_factor,bottom,top):
+    '''Divides the factoring problem in many equal segments.  Calls the factorize function
+    for the smaller problems'''
+    segments=list() #The list of segments
     orig_num_to_factor=num_to_factor #The original num_to_factor
     manager=Manager() #To access common elements among processes
     cond_loc=Lock()
@@ -294,44 +292,43 @@ def factor_broker(num_to_factor,bottom,top,segments):
     num_cpus=multiprocessing.cpu_count() #Number of CPUs in this computer
     max_candidate=int(math.ceil(math.sqrt(num_to_factor))) #Square root of the number to factor
     top=min(top,max_candidate) #The last possible candidate is the minimum between this two
-    if len(segments)==0:#No segments from the command line, then make them up
-        #If there are no segments defined so far, a factoring process is created and run
-        # for an specific amount of time to meassure how many factors the program can
-        # process in that time.  Based on that data, the segments are created
-        factor_eng.append(create_process(num_to_factor,manager,cond,(bottom,top)))
-        factor_eng[0][1].start()
-        factor_eng[0][1].join(phase1_time) #Run the process for a specific period of time
-        factor_eng[0][3].acquire() #Lock the updates in the factoring process
-        if factor_eng[0][1].is_alive(): #If factoring is not done
-            factor_eng[0][1].join(0.1) #Just in case it finished between the if and the acquire
-            factor_eng[0][4].clear() #Clear the event in case it was set from the shell
-            os.kill(factor_eng[0][1].pid,signal.SIGUSR1) #Send signal 10 to the process
-            factor_eng[0][4].wait() #Wait for the process to gather and return its data
-            factor_eng[0][1].terminate()
-            if factor_eng[0][2].compnum: #There might be a new composite number to factor here
-                num_to_factor=factor_eng[0][2].compnum
-            candidates_processed= (factor_eng[0][2].last_candidate) - bottom
-            if arguments.verbose: print "Candidates processed in phase 1: %d" % candidates_processed
-            l_candidate=int(math.ceil(math.sqrt(factor_eng[0][2].compnum)))
-            remaining_candidates=l_candidate - factor_eng[0][2].last_candidate
-            if arguments.verbose: print "Remaining candidates: %d" % remaining_candidates
-            groups_of_candidates= remaining_candidates / candidates_processed 
-            if groups_of_candidates > max_segments:
-                seg_mul_computed=remaining_candidates / float(max_segments*candidates_processed)
-                segment_multiplier=min(max_multiplier,seg_mul_computed)
-                candidates_per_segment=int(math.ceil(segment_multiplier*candidates_processed))
-            else:
-                candidates_per_segment=candidates_processed
-            if arguments.verbose: print "Candidates per segment:",candidates_per_segment
-            if arguments.verbose: print "Last possible candidate:", l_candidate
-            segment_low_limit=factor_eng[0][2].last_candidate
+    # A factoring process is created and run for an specific amount of time to meassure
+    # how many factors the program can process in that time.  Based on that data, the
+    # segments are created
+    factor_eng.append(create_process(num_to_factor,manager,cond,(bottom,top)))
+    factor_eng[0][1].start()
+    factor_eng[0][1].join(phase1_time) #Run the process for a specific period of time
+    factor_eng[0][3].acquire() #Lock the updates in the factoring process
+    if factor_eng[0][1].is_alive(): #If factoring is not done
+        factor_eng[0][1].join(0.1) #Just in case it finished between the if and the acquire
+        factor_eng[0][4].clear() #Clear the event in case it was set from the shell
+        os.kill(factor_eng[0][1].pid,signal.SIGUSR1) #Send signal 10 to the process
+        factor_eng[0][4].wait() #Wait for the process to gather and return its data
+        factor_eng[0][1].terminate()
+        if factor_eng[0][2].compnum: #There might be a new composite number to factor here
+            num_to_factor=factor_eng[0][2].compnum
+        candidates_processed= (factor_eng[0][2].last_candidate) - bottom
+        if arguments.verbose: print "Candidates processed in phase 1: %d" % candidates_processed
+        l_candidate=int(math.ceil(math.sqrt(factor_eng[0][2].compnum)))
+        remaining_candidates=l_candidate - factor_eng[0][2].last_candidate
+        if arguments.verbose: print "Remaining candidates: %d" % remaining_candidates
+        groups_of_candidates= remaining_candidates / candidates_processed 
+        if groups_of_candidates > max_segments:
+            seg_mul_computed=remaining_candidates / float(max_segments*candidates_processed)
+            segment_multiplier=min(max_multiplier,seg_mul_computed)
+            candidates_per_segment=int(math.ceil(segment_multiplier*candidates_processed))
+        else:
+            candidates_per_segment=candidates_processed
+        if arguments.verbose: print "Candidates per segment:",candidates_per_segment
+        if arguments.verbose: print "Last possible candidate:", l_candidate
+        segment_low_limit=factor_eng[0][2].last_candidate
+        segment_high_limit=min(segment_low_limit + candidates_per_segment,l_candidate) 
+        segments.append((segment_low_limit,segment_high_limit))
+        while segment_high_limit < l_candidate:
+            segment_low_limit = segment_high_limit + 1
             segment_high_limit=min(segment_low_limit + candidates_per_segment,l_candidate) 
             segments.append((segment_low_limit,segment_high_limit))
-            while segment_high_limit < l_candidate:
-                segment_low_limit = segment_high_limit + 1
-                segment_high_limit=min(segment_low_limit + candidates_per_segment,l_candidate) 
-                segments.append((segment_low_limit,segment_high_limit))
-        if arguments.verbose: print "Factors found in phase 1: %s" % factor_eng[0][0]
+    if arguments.verbose: print "Factors found in phase 1: %s" % factor_eng[0][0]
     if arguments.verbose: print "Number of segments: %d" % len(segments)
     cond.acquire()
     slots=min(num_cpus,len(segments))
@@ -420,11 +417,6 @@ if __name__ == '__main__':
     if arguments.runtest: #If running the test cases
         run_test_cases(arguments.runtest)
     else: #Not running tests
-        if arguments.segments is not None:
-            while len(arguments.segments) > 1:
-                segment_ini=arguments.segments.pop(0)
-                segment_end=arguments.segments.pop(0)
-                segments.append((segment_ini,segment_end))
         if arguments.addtest:#Save the test case if requested and it has not been saved before
             test_cases=read_test_cases(arguments.addtest) #Load or create a dictionary of test cases
             if str(arguments.num) in test_cases: #If the test case already exists, say so and exit
@@ -434,7 +426,7 @@ if __name__ == '__main__':
             print "+Number to factor=%d" % arguments.num
         t_start=time.time()
         try:
-            factors=factor_broker(arguments.num,arguments.firstcandi,arguments.lastcandi,segments)
+            factors=factor_broker(arguments.num,arguments.firstcandi,arguments.lastcandi)
         except KeyboardInterrupt:
             t_end=time.time()
             print "Time used",round(t_end-t_start,4),"seconds"
