@@ -1621,28 +1621,50 @@ Nivel batido.  Con las mejoras introducidas en esta versión 2.3 el rendimiento 
 
 
 
-PARALELISMO ALEATORIO
-Version 2.4
+### PARALELISMO ALEATORIO
+**Version 2.4**
 
 En esta versión vamos a procesar los segmentos de forma aleatoria, en lugar de
-secuencial.  Aunque el primer pseudo-segmento siempre se ejecuta de forma secuencial en
-la fase 1
+secuencial.  Se definen dos partes en la factorización claramente diferenciadas: _fase 1_
+_fase general_
 
--Los factores que se encuentren en la fase 1 se guardan como factores primos.
--Cuando se encuentre un factor comprobaremos cuantas veces divide al número a factorizar
- pero solo guardaremos una copia del factor
--Tan pronto como se encuentre un factor en un segmento distinto al de la fase 1, se
- detiene la factorización y se guardan en una cola dos nuevos números a factorizar: el
- factor encontrado y el resultado de divivir el número a factorizar entre el factor
- encontrado.
--El candidato inicial para un nivel de factorización se actualizará tras la finalizacón de
- la fase 1 y tras la finalización de un segmento que esté al principio de la lista (el más
- bajo)
--Cada candidato encolado, se guardará junto con su valor de candidato mínimo a partir
- del cual buscar factores.  El valor del candidato mínimo es facil de obtener, es el menor
- valor de menor segmento en la lista de segmentos pendientes de procesar.
--The mission acomplished concept makes no sense anymore: either you found a factor and the
- segment processing is done, or you didn't and the segment processing continues.  Just
- store with the primer factors the number to factor remaining when all segments have been
- processed.
++ **fase 1**.- En esta fase se recorre el primer grupo de candidatos, durante un tiempo
+  determinado; si se encuentran factores, se guardan como definitivos.  Si no se ha
+  terminado la factorización en esta fase se define el conjunto de segmentos en que se
+  devide el espacio de candidatos.
++ **fase general**.- En esta fase se procesan los segmentos en busqueda de factores de
+  forma aleatoria, ya no es necesario procesar los segmentos de forma secuencial.  En
+  cuanto se encuentra un factor se detiene la factorización y el factor encontrado junto
+  con el resultado de dividir en número entre el factor se guardan en una lista de
+  elementos a factorizar.
+  
+La factorización _paralela aleatoria_ no necesariamente supone una mejora en el
+rendimiento de la aplicación.  Cada vez que factoricemos un número, y este supere la fase
+1, el tiempo que tarde en factorizarse dependerá del orden en que se hayan procesado los
+segemtos, es decir en genral el tiempo de factorización será distinto en cada ejecución de
+la factorización; a no ser que el número sea primo, en cuyo caso la factorización deberá
+recorrer todos los segmentos y el tiempo será el mismo en cada ejecución. 
 
+
+#### Requisitos de esta versión
+
++ Los factores que se encuentren en la fase 1 se guardan como factores primos, es decir
+  factores definitivos.
++ Cuando se encuentre un factor fuera de la fase 1 comprobaremos cuantas veces divide al
+  número a factorizar pero solo guardaremos una copia del factor.  Esto se hace así para
+  que no se factorice dos veces un mismo factor 
++ Tan pronto como se encuentre un factor fuera de la fase 1, se detiene la factorización y
+  se guardan en una cola dos nuevos números a factorizar: el factor encontrado y el
+  resultado de divivir el número a factorizar entre el factor encontrado.
++ El candidato inicial para un nivel de factorización se actualizará tras la finalizacón
+  de la fase 1 y tras la finalización de un segmento que esté al principio de la lista (el
+  más bajo)
++ Cada candidato encolado, se guardará junto con su valor de candidato mínimo a partir del
+  cual buscar factores.  El valor del candidato mínimo es facil de obtener, es el menor
+  valor de menor segmento en la lista de segmentos pendientes de procesar.
++ The mission acomplished concept makes no sense anymore: either you found a factor and
+  the segment processing is done, or you didn't and the segment processing continues.
+  Just store with the primer factors the number to factor remaining when all segments have
+  been processed.
++ In this version the option to pass the segments in the command line has to be removed to
+  make sure the phase 1 is executed.
