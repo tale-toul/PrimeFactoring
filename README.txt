@@ -1658,7 +1658,10 @@ recorrer todos los segmentos y el tiempo será el mismo en cada ejecución.
   resultado de divivir el número a factorizar entre el factor encontrado.
 + El candidato inicial para un nivel de factorización se actualizará tras la finalizacón
   de la fase 1 y tras la finalización de un segmento que esté al principio de la lista (el
-  más bajo)
+  más bajo).  Este requisito y el siguiente puede que no merezca la pena incluirlo debido
+  a que la ganancia al econtrar factores en la fase general supera con creces la de
+  actualizar el candidato inicial, sin embargo la complejidad en la modificación de la
+  aplicación para añadir este requisito es grande.
 + Cada candidato encolado, se guardará junto con su valor de candidato mínimo a partir del
   cual buscar factores.  El valor del candidato mínimo es facil de obtener, es el menor
   valor de menor segmento en la lista de segmentos pendientes de procesar.
@@ -1668,3 +1671,80 @@ recorrer todos los segmentos y el tiempo será el mismo en cada ejecución.
   been processed.
 + In this version the option to pass the segments in the command line has to be removed to
   make sure the phase 1 is executed.
+
+
+#### Pruebas de la version 2.4
+
++ Nivel 16
+ 1. Número compuesto múltiple
+    3644792236778694 = [2, 3, 101, 42473, 141607813L] In 0.139 seconds
+
+ 2. Número compuesto por dos primos
+    3849788417036503 = [59423701, 64785403L] In 21.8415 seconds
+
+ 3. Número primo
+    5332147896211517 = [5332147896211517L] In 22.9942 seconds
+
+    5332147896211517 = [5332147896211517L] In 23.6767 seconds
+
+**Nivel batido**
+
++ Nivel 17
+ 1. Número compuesto múltiple
+    64795512344765945 = [5, 31, 83, 157, 653, 49127233L] In 0.1051 seconds
+
+ 2. Número compuesto por dos primos
+    32563672784171761 = [67894373, 479622557L] In 32.3036 seconds
+
+ 3. Número primo
+    55641397544639089 = [55641397544639089L] In 63.5148 seconds
+
+**Nivel batido**. El tiempo de factorización del número del tipo (2) depende de la
+ejecución, cada una tarda un tiempo distinto.
+
+
++ Nivel 18
+
+ 1. Número compuesto múltiple
+    954788612384655179 = [53077, 118429, 151894763L] In 0.1867 seconds
+
+ 2. Número compuesto por dos primos
+    498542964342543929 = [652231511, 764365039L] In 27.4718 seconds
+
+ 3. Número primo
+    546698741123646019 = [546698741123646019L] In 164.9989 seconds
+
+**Nivel batido**
+
+
++ Nivel 19
+
+ 1. Número compuesto múltiple
+    3689445781236985154 = [2, 7, 11, 37, 121267, 5339444219L] In 0.1868 seconds
+
+ 2. Número compuesto por dos primos
+    2537675226119470571 = [548997653, 4622379007L] In 143.3016 seconds
+
+ 3. Número primo
+    5977455832169755667 = [5977455832169755667L] In 606.9941 seconds
+
+**Nivel batido**
+
+
++ Nivel 20
+
+ 1. Número compuesto múltiple
+    59774558321697556676 = [2, 2, 23, 2069, 314027771879387L] In 11.8584 seconds
+
+ 2. Número compuesto por dos primos
+
+    36579649644065170163 = [5568743671L, 6568743653L] In 13.4473 seconds
+    25841129207805312677 = [3526889461L, 7326889457L] In 502.3551 seconds
+    
+ 3. Número primo
+    52369844786321568503 = [52369844786321568503L] In 1845.6705 seconds (30 minutos aprox.)
+
+    52369844786321568503 = [52369844786321568503L] In 2371.4282 seconds (más de 39
+    minutos)
+
+**Nivel batido**

@@ -396,7 +396,7 @@ def factor_broker(num_to_factor,bottom,top):
                     temp_proc_list.append(proc)
                     proc[3].release()
             running_processes=temp_proc_list
-            slots = num_cpus - len(running_processes) 
+            slots = min(num_cpus - len(running_processes) , len(segments))
         cond.release()
         for last_proc in running_processes:
             last_proc[1].join()
