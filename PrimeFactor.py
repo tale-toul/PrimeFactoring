@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 2.4.1
+#Version 2.4.2
 
 import sys
 import time
@@ -30,10 +30,7 @@ def validate_factors(num,factors):
         else:
             print "%d is not prime" % (item,)
             return False
-    if partial_result == num:
-        return True
-    else:
-        return False
+    return True if partial_result == num else False # Ternary expression
 
 
 #Parameters: compnum.- An integer to factorize
@@ -50,30 +47,29 @@ def validate_factors(num,factors):
 #           last_candidate.- The last candidate to try
 #           phase1.- Are we running in phase1 mode, if not leave as soon as we find a
 #                    factor
-#Return:  the list of factors
+#Return:  The list of factors found, with duplacates, it needs cleaning
 #The core functionality of program, finds the prime factors of compnum
 def factorize_with_limits(compnum,own_results,nms,loc,event,cond,candidate=2,last_candidate=2,
                           phase1=False):
-    increments_dict={'7':[2,2,2,4],
-                     '9':[2,2,4,2],
-                     '1':[2,4,2,2],
-                     '3':[4,2,2,2]}
-    increment=increments_dict['7'] #By default the 7 increment list is used
+    cand_adj_increments= {0:('1',[2,4,2,2]),
+                          1:('1',[2,4,2,2]),
+                          2:('3',[4,2,2,2]),
+                          3:('3',[4,2,2,2]),
+                          4:('7',[2,2,2,4]),
+                          5:('7',[2,2,2,4]),
+                          6:('7',[2,2,2,4]),
+                          7:('7',[2,2,2,4]),
+                          8:('9',[2,2,4,2]),
+                          9:('9',[2,2,4,2])}
+                     
     max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
-    if candidate > 5:
-        text_candidate_last=str(candidate)[-1]
 #Place the candidate in the correct position; if the candidate ends in 7, 9, 1 or 3 do nothing
-        if text_candidate_last == '4' or text_candidate_last == '5' or text_candidate_last == '6':
-            text_candidate_last='7' #Bring it up to next number ending in 7
-        elif text_candidate_last == '8':
-            text_candidate_last='9' #Bring it up to next number ending in 9
-        elif text_candidate_last == '0':
-            text_candidate_last='1' #Bring it up to next number ending in 1
-        elif text_candidate_last == '2':
-            text_candidate_last='3' #Bring it up to next number ending in 3
-        candidate =int(str(candidate)[:-1]+text_candidate_last) #Add the new ending 
-#Now use the correct increment list
-        increment=increments_dict[text_candidate_last]
+    if candidate > 5:
+        updated_last_figure ,increment = cand_adj_increments[candidate%10]
+        candidate =int(str(candidate)[:-1]+updated_last_figure) #Add the new ending 
+    else: #candidate is 2, 3, 4 or 5
+        increment=cand_adj_increments[7][1] #The 7 increment list is used
+
     signal.signal(signal.SIGUSR1,signal_show_current_status) #Sets the handler for the signal SIGUSR1
     if candidate == 2: #This condition is here because the initial value of candidate may be different from 2
         while compnum%candidate == 0:  #Candidate = 2, consider it as a special case
