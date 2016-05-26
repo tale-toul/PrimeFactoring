@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Version 2.4.2
+#Version 2.4.3
 
 import sys
 import time
@@ -23,6 +23,7 @@ factors=list() #List of number's found factors
 #The function checks that multiplying the factors in the list factors renders the value
 #stored in the variable num
 def validate_factors(num,factors):
+    '''Checks that the factors are possibly prime, and that its product yields the number'''
     partial_result=1
     for item in factors:
         if gmpy2.is_prime(item):
@@ -31,7 +32,29 @@ def validate_factors(num,factors):
             print "%d is not prime" % (item,)
             return False
     return True if partial_result == num else False # Ternary expression
-
+#Parameters: compnum.- An integer to factorize
+#            own_results.- list to store the factors found during the execution of the
+#                       function.  Belongs to a multiprocessing Manager so it's visible
+#                       outside the process
+#           candidate.- The first candidate to start looking for factors
+#           last_candidate.- The last candidate to try
+#           max_candidate.- The maximun value a candidate can get to look for factors
+#           loc.- multiprocessing Lock to controll access to own_results
+#           phase1.- Are we running in phase1 mode, if not leave as soon as we find a
+#Returns: The updated values of compnum and max_candidate. The own_results is also
+#         updated, but this is done in-place
+def update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1):
+    '''This function is called when a new factor is found. Adds the factor found to the
+    results list; updates the number to factor, dividing it by the factor found; and
+    updates the maximun candidate, making it -1 in case we are in phase 1, what causes and
+    inmediate exit of the factoring process '''
+    own_results.append(candidate)
+    compnum /= candidate
+    if not phase1:
+        max_candidate=-1 # Return ASAP
+    else:
+        max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+    return (compnum,max_candidate)
 
 #Parameters: compnum.- An integer to factorize
 #           own_results.- list to store the factors found during the execution of the
@@ -48,9 +71,15 @@ def validate_factors(num,factors):
 #           phase1.- Are we running in phase1 mode, if not leave as soon as we find a
 #                    factor
 #Return:  The list of factors found, with duplacates, it needs cleaning
-#The core functionality of program, finds the prime factors of compnum
 def factorize_with_limits(compnum,own_results,nms,loc,event,cond,candidate=2,last_candidate=2,
                           phase1=False):
+    '''The core functionality of the program.  Multiprocess function used to factor a
+    number, it will look for factors inside a defined segment, between an initial and a
+    final possible candidates. All factors found are saved and returned to the parent
+    process'''
+
+    #This data structure is used to adjust the initial candidate, and select the correct
+    #increment dictionary 
     cand_adj_increments= {0:('1',[2,4,2,2]),
                           1:('1',[2,4,2,2]),
                           2:('3',[4,2,2,2]),
@@ -74,77 +103,42 @@ def factorize_with_limits(compnum,own_results,nms,loc,event,cond,candidate=2,las
     if candidate == 2: #This condition is here because the initial value of candidate may be different from 2
         while compnum%candidate == 0:  #Candidate = 2, consider it as a special case
             loc.acquire()
-            own_results.append(candidate)
-            compnum /= candidate
-            if not phase1:
-                max_candidate=-1 # Return ASAP
-            else:
-                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1)
             loc.release()
         candidate += 1 #Now candidate equals 3
     if candidate == 3: #This condition is here because the initial value of candidate may be different from 2
         while compnum%candidate == 0:
             loc.acquire()
-            own_results.append(candidate)
-            compnum /= candidate
-            if not phase1:
-                max_candidate=-1 # Return ASAP
-            else:
-                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1)
             loc.release()
         candidate += 2 #Now candidate equals 5
     if candidate == 4: candidate = 5 #Upgrade to the next meaninful candidate
     if candidate == 5: #This condition is here because the initial value of candidate may be different from 2
         while compnum%candidate == 0:
             loc.acquire()
-            own_results.append(candidate)
-            compnum /= candidate
-            if not phase1:
-                max_candidate=-1 # Return ASAP
-            else:
-                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1)
             loc.release()
         candidate += 2 #Now candidate equals 7
 #----MAIN LOOP----
     while candidate <= max_candidate:
         while compnum%candidate == 0: # For candidates ending in 7
             loc.acquire()
-            own_results.append(candidate)
-            compnum /= candidate
-            if not phase1:
-                max_candidate=-1 # Return ASAP
-            else:
-                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1)
             loc.release()
         candidate += increment[0] #This increment depends on the incremnet list selected bejore
         while compnum%candidate == 0: #For candidates ending in 9
             loc.acquire()
-            own_results.append(candidate)
-            compnum /= candidate
-            if not phase1:
-                max_candidate=-1 # Return ASAP
-            else:
-                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1)
             loc.release()
         candidate += increment[1] #This increment depends on the incremnet list selected bejore
         while compnum%candidate == 0: #For candidates ending in 1
             loc.acquire()
-            own_results.append(candidate)
-            compnum /= candidate
-            if not phase1:
-                max_candidate=-1 # Return ASAP
-            else:
-                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1)
             loc.release()
         candidate += increment[2] #This increment depends on the incremnet list selected bejore
         while compnum%candidate == 0: #For candidates ending in 3
             loc.acquire()
-            own_results.append(candidate)
-            compnum /= candidate
-            if not phase1:
-                max_candidate=-1 # Return ASAP
-            else:
-                max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
+            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1)
             loc.release()
         candidate += increment[3] #This increment depends on the incremnet list selected bejore
     loc.acquire()

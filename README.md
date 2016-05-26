@@ -1,20 +1,20 @@
-﻿FACTORIZACION DE NUMEROS PRIMOS
+﻿## FACTORIZACION DE NUMEROS PRIMOS
 
 Author: tale.toul@gmail.com
 
-INTRODUCCION
+### INTRODUCCION
 
-Vamos a desarrollar un proyecto software para solucionar un problema simple: descomponer
-un número en sus factores primos.  La idea es simple, tenemos un número que debe ser
-entero, ya que la factorización solo tiene sentido en los enteros, que además será
-positivo, aunque es posible factorizar números negativos no los vamos a tener en cuenta;
-y lo vamos a descomponer en una serie números primos que al ser multiplicados entre sí
-nos darán el número original.  
+Vamos a desarrollar un proyecto software para solucionar el siguiente problema:
+descomponer un número en sus factores primos.  La idea es simple, tenemos un número, que
+debe ser entero, ya que la factorización solo tiene sentido en los enteros, que además
+será positivo, aunque es posible factorizar números negativos no los vamos a tener en
+cuenta; y lo vamos a descomponer en una serie números primos que al ser multiplicados
+entre sí obtendremos el número original.  
 
-A = b * c * d * .... Siendo b,c,d números primos
+`A = b * c * d * .... Siendo b,c,d números primos` 
 
-Si el número a factorizar no se puede descomponer quiere decir que es primo. Por si
-alguien está despistado un número primo es aquel que solo es divisible por el mismo y por
+Si el número a factorizar no se puede descomponer, esto quiere decir que es primo. Por si
+alguien está despistado un número primo es aquel que solo es divisible por él mismo y por
 1.
 
 Para aclarar qué tipo de números vamos a tratar, estos siempre serán enteros positivos,
@@ -24,13 +24,14 @@ entero positivo, si no fuera así, por ejemplo en una división, el resultado de
 operación se redondea o se descarta.
 
 
-ALCANCE
+### ALCANCE
 
 Como se ha dicho antes el problema es sencillo de acometer, buscar los factores de un
 número o en su defecto determinar si este es primo es una tarea sencilla, fácil de
-comprender  de programar, al menos inicialmente.  Sin embargo veremos que la dificultad
+comprender y de programar, al menos inicialmente.  Sin embargo veremos que la dificultad
 de obtener una solución correcta crece enormemente a medida que el número a factorizar se
-hace más grande, hasta el punto en que veremos que es imposible acometerla y resolverla.
+hace más grande, hasta el punto en que veremos que es imposible resolverla en un tiempo
+razonable.
 
 Por lo tanto tenemos un problema sencillo de comprender y de atacar pero imposible de
 solucionar a partir de cierto nivel.  Sin embargo no debemos desfallecer, Iremos
@@ -39,7 +40,7 @@ superiores a medida que hayamos batido el desafío del nivel actual como si se t
 de un videojuego de aventuras; veremos hasta donde somos capaces de llegar.
 
 
-DESCRIPCIÓN DEL PROCEDIMIENTO BÁSICO
+### DESCRIPCIÓN DEL PROCEDIMIENTO BÁSICO
 
 El procedimiento básico para factorizar un número A es sencillo, buscaremos otros números
 menores que él (b,c,d,...), que sean primos, de manera que al dividir nuestro número A
@@ -54,22 +55,23 @@ determinar que el número que estamos dividiendo es primo.
 Veamos un ejemplo, vamos a factorizar el número 14:
 1. Probamos a dividirlo entre 2:  14/2   el resultado es un entero = 7
 2. Guardo el 2 en la lista de factores primos de 14 y continúo dividiendo usando ahora el
-resultado de la división anterior, es decir 7 3. Puesto que el resultó de la última
-división fue un entero continuamos probando el mismo factor, solo pasamos al siguiente
-cuando la división no devuelva un entero =>  7/2 = 3.5  El resultado no es entero, luego
-se descarta.
+   resultado de la división anterior, es decir 7.
+3. Puesto que el resultó de la última división fue un entero continuamos probando el mismo
+   factor, solo pasamos al siguiente cuando la división no devuelva un entero =>  7/2 =
+   3.5  El resultado no es entero, luego se descarta.
 4. Probamos el siguiente factor: 3 => 7/3= 2.333   El resultado no es entero y se
-descarta 5. Probamos el siguiente factor: 4 => 7/4=1.75  No es entero se descarta
+   descarta 
+5. Probamos el siguiente factor: 4 => 7/4=1.75  No es entero se descarta
 6. Probamos el siguiente factor: 5 => 7/5=1.4   No es entero se descarta
 7. Probamos el siguiente factor 6 => 7/6=1.16     No es entero se descarta
 8. Probamos el siguiente factor 7 => 7/7 = 1  El resultado es entero, pero hemos llegado
-al número que estábamos intentando factorizar, así que hemos terminado la busqueda y
-determinado que 7 es un factor primo.
-9. El resultado final es que los factores primos de 14 son 2 y 7, de hecho 7*2=14
+   al número que estábamos intentando factorizar, así que hemos terminado la busqueda y
+   determinado que 7 es un factor primo.
+9. El resultado final es que los factores primos de 14 son 2 y 7, de hecho 7 * 2=14
 
 
 
-¿CÓMO SÉ QUE EL FACTOR QUE HE OBTENIDO ES UN NÚMERO PRIMO?
+### ¿CÓMO SÉ QUE EL FACTOR QUE HE OBTENIDO ES UN NÚMERO PRIMO?
 
 Cuando busco los factores de un número este puede ser divisible entre números que son
 primos y otros que no lo son, ¿cómo puedo estar seguro que el factor que he encontrado es
@@ -80,41 +82,55 @@ probar factores desde el número 2 e ir incrementando en uno cada vez, nos asegu
 antes de llegar a probar el número compuesto (8) como divisor, habremos probado los
 factores de este, que necesariamente son menores que él, y por lo tanto si llegamos a
 probar el número compuesto (8), el número a factorizar ya no será divisible entre él.
-16=2*2*2*2, no llegamos ni a probar el 8
-Veamos otro ejemplo: 88 => 88/2 = 44 => 44/2=22 => 22/2=11 ...=> 11/8=1.375 (se descarta)
-…=> 11/11=1 (fin)
+`16 = 2 * 2 * 2 * 2` no llegamos ni a probar el 8
+
+Veamos otro ejemplo, en el que factorizamos el número 88 
+
+1. 88/2 = 44 
+2. 44/2=22 
+3. 22/2=11 
+4. ...
+5. 11/8=1.375 (se descarta)
+6. ...
+7. 11/11=1 (fin)
 
 
-VERSION 1.0
+### VERSION 1.0
 
 La factorización de un número es un buen ejemplo de tarea adecuada para realizar con un
 programa (software), es repetitiva e implica operaciones matemáticas, que son realizadas
-muy rápidamente por un ordenador, pero lentamente por una persona.
+muy rápidamente por un ordenador pero lentamente por una persona.
 
-El procedimiento básico para factorizar un número es es facil de programar, el
-funcionamiento básico del programa es:
+El procedimiento básico para factorizar un número es facil de programar, el funcionamiento
+básico del programa es:
 
--Le pasamos el número a factorizar al programa en la linea de comandos
--Creamos un bucle en el que al número a factorizar se le aplica la operación módulo
-contra el candidato a ser un factor.  La operación módulo devuelve el resto de la
-división entre dos números, si el resto es cero el número a dividir es divisible entre el
-candidato, lo que implica que es un factor de este, si el resto es distinto de cero el
-número no es divisible entre el candidato y por lo tanto no es un factor de este.  
--Si se encuentra un factor, se añade a la lista de factores, y el número a factorizar se
-divide entre el factor, y será el que se use a partir de ahora como número a factorizar;
-se vuelve a probar el mismo candidato a factor sobre el nuevo número. 
--Si no se encuentra un factor en la iteración del bucle se incrementa en uno el candidato
-y se vuelve a entrar en el bucle.
--El bucle se repite hasta que el candidato a factor sea mayor que el número a factorizar.
+>1. Le pasamos el número a factorizar al programa como parametro
+>
+>2. Creamos un bucle en el que al número a factorizar se le aplica la operación módulo
+>contra el candidato a ser un factor.  La operación módulo devuelve el resto de la división
+>entre dos números, si el resto es cero el número es divisible entre el candidato, lo que
+>implica que es un factor de este, si el resto es distinto de cero el número no es
+>divisible entre el candidato y por lo tanto no es un factor de este.  
+>
+>3. Si se encuentra un factor, se añade a la lista de factores, y el número a factorizar se
+>divide entre el factor, y el resultado será el que se use a partir de ahora como número a
+>factorizar; se vuelve a probar el mismo candidato a factor sobre el nuevo número. 
+>
+>4. Si no se encuentra un factor se incrementa en uno el candidato y se vuelve a entrar en
+>el bucle.
+>
+>5. El bucle se repite hasta que el candidato a factor sea mayor que el número a
+>factorizar.
 
 
-Validación de resultados
+#### Validación de resultados
 
 Vamos a añadir algunos métodos para validar los resultados obtenidos por nuestro
 programa.
+
 En primer lugar usaremos una función para comprobar que los resultados obtenidos son
 correctos.  Esta función es facil de implementar, se le pasa el número que hemos
-factorizado y los factores que hemos encontrados; multiplicamos los factores entre sí y
+factorizado y los factores que hemos encontrado; multiplicamos los factores entre sí y
 debemos obtener el número a factorizar.  No vamos a comprobar si los factores son números
 primos.
 
@@ -124,7 +140,7 @@ manera que lea la lista de números de la batería de pruebas y compare los resu
 obtenidos con los resultados de la batería.  Este método está pendiente de programar.
 
 
-Pruebas
+#### Pruebas
 
 Vamos a ver hasta donde podemos llegar con esta versión del programa, probaremos a
 factorizar números cada vez más grandes y veremos cuanto tarda el programa en obtener sus
@@ -133,34 +149,35 @@ Nos interesan dos aspectos principales en el proceso: Obtener un resultado corre
 factorizar el número; que el tiempo de resolución del problema (factorizar) sea razonable.
 
 Definiremos varios parametros importantes:
--El tamaño del número a factorizar.- Para cuantificar el número a factorizar
-consideraremos solo el número de cifras que lo componen y no el número concreto. El
-número de cifras determinará el nivel que hemos batido con nuestro programa.
++ El tamaño del número a factorizar.- Para cuantificar el número a factorizar
+  consideraremos solo el número de cifras que lo componen y no el número concreto. El
+  número de cifras determinará el nivel que hemos batido con nuestro programa.
 
--El tiempo que tarde en ser factorizado.- La calidad de nuestro programa se mide por dos
-factores principales: que sea capaz de factorizar el número correctamente y que lo haga
-dentro de un tiempo razonable, definiremos un tiempo máximo para factorizar un número de
-una hora, y veremos hasta que nivel llegamos con este tiempo. 
-Al definir un tiempo máximo necesitamos un mecanismo que nos permita medir el tiempo que
-tarda el programa y otro que nos permita detener el programa y que este muestre por donde
-iba cuando se detuvo: los factores encontrados y hasta qué candidato ha
-probado.  Para poder comparar el tiempo que tarda nuestro programa en resolver
-cada factorización definiremos un hardware standard, este será un Raspberry Pi.
++ El tiempo que tarde en ser factorizado.- La calidad de nuestro programa se mide por dos
+  factores principales: que sea capaz de factorizar el número correctamente y que lo haga
+  dentro de un tiempo razonable, definiremos un tiempo máximo para factorizar un número de
+  una hora, y veremos hasta que nivel llegamos con este tiempo.  Al definir un tiempo
+  máximo necesitamos un mecanismo que nos permita medir el tiempo que tarda el programa y
+  otro que nos permita detener el programa y que este muestre por donde iba cuando se
+  detuvo: los factores encontrados y hasta qué candidato ha probado.  Para poder comparar
+  el tiempo que tarda nuestro programa en resolver cada factorización definiremos un
+  hardware standard, este será un Raspberry Pi.
 
--El tipo de número a factorizar.- Intentaremos factorizar varios tipos de números: al
-menos un número compuesto de más de dos factores; al menos un número compuesto por dos
-factores de tamaño similar (en cifras); al menos un número primo.  Cada uno de estos
-números tardará un tiempo distinto en ser factorizado, siendo el número primo el que más
-tarde con diferencia.
++ El tipo de número a factorizar.- Intentaremos factorizar varios tipos de números: al
+  menos un número compuesto de más de dos factores; al menos un número compuesto por dos
+  factores de tamaño similar (en cifras); al menos un número primo.  Cada uno de estos
+  números tardará un tiempo distinto en ser factorizado, siendo el número primo el que más
+  tarde con diferencia.
 
 
 
-Generacion automática de casos de prueba
+#### Generacion automática de casos de prueba
 
 Para generar casos de prueba sin necesidad de introducirlos uno a uno voy a usar la
 siguiente orden en una consola:
 
- # for x in {1..500}; do ./PrimeFactor.py --addtest testcases.dat -v $(python -c "import random;print random.randint(1000000,9999999)"); done
+`# for x in {1..500}; do ./PrimeFactor.py --addtest testcases.dat -v $(python -c "import
+random;print random.randint(1000000,9999999)"); done`
 
 Esta orden esta compuesta por un bucle que se ejecutará 500 veces, dentro del bucle se
 ejecuta el programa de factorización, y el número a factorizar es generado por un trozo de
@@ -168,113 +185,112 @@ código python, que genera un número aleatorio dentro del rango que se le indic
 
 
 
+#### Pruebas de la versión 1.0
 
-Pruebas de la versión 1.0
 Para estas pruebas usaremos como plataforma hardware un Raspberry Pi modelo B
 revisión 1, con sistema operativo raspbian jessie
 
--Nivel 1 
++ Nivel 1 
  En este nivel los números compuestos y los primos serán de una sola cifra, por no ser
  posible reducir el número de cifras en menos que uno.
  
- 1-Número compuesto múltiple.- Solo existe un caso que podemos usar para un número
+ 1. Número compuesto múltiple.- Solo existe un caso que podemos usar para un número
  compuesto por más de dos números primos, este es el 8=[2,2,2]
     8 = [2, 2, 2] In 0.000190019607544 seconds
- 2-Número compuesto por dos primos.- Usaremos el 9=[3,3]
+ 2. Número compuesto por dos primos.- Usaremos el 9=[3,3]
     9 = [3, 3] In 0.000190019607544 seconds
- 3-Número primo.- 7=[7]
+ 3. Número primo.- 7=[7]
     7 = [7] In 0.000192880630493 seconds
- 4-Adicionalmente guardaremos como casos de prueba todos los números interesantes de una
+ 4. Adicionalmente guardaremos como casos de prueba todos los números interesantes de una
  cifra, desde el 1 al 9
 
  Nivel batido. Los tiempos de factorización son del orden de microsegundos. 
 
 
--Nivel 2
- 1-Número compuesto múltiple
++ Nivel 2
+ 1. Número compuesto múltiple
     30 = [2, 3, 5] In 0.000200986862183 seconds
- 2-Número compuesto por dos primos
+ 2. Número compuesto por dos primos
     14 = [2, 7] In 0.000207901000977 seconds
- 3-Número primo
+ 3. Número primo
     17 = [17] In 0.000205993652344 seconds
  
  Nivel batido. Los tiempos siguen siendo ridiculos
 
--Nivel 3
- 1-Número compuesto múltiple
++ Nivel 3
+ 1. Número compuesto múltiple
     172 = [2, 2, 43] In 0.000254154205322 seconds
- 2-Número compuesto por dos primos
+ 2. Número compuesto por dos primos
     187 = [11, 17] In 0.000391006469727 seconds
- 3-Número primo
+ 3. Número primo
     487 = [487] In 0.00111198425293 seconds
     683 = [683] In 0.00135493278503 seconds
 
  Nivel batido. Los tiempos de factorización suben al orden de los milisegundos.
 
--Nivel 4
- 1-Número compuesto múltiple
++ Nivel 4
+ 1. Número compuesto múltiple
     4823 = [7, 13, 53] In 0.000292778015137 seconds
- 2-Número compuesto por dos primos
+ 2. Número compuesto por dos primos
     6523 = [11, 593] In 0.00151515007019 seconds
- 3-Número primo
+ 3. Número primo
     4871 = [4871] In 0.008544921875 seconds
     5441 = [5441] In 0.00976800918579 seconds
 
  Nivel batido. 
 
--Nivel 5
- 1-Número compuesto múltiple
++ Nivel 5
+ 1. Número compuesto múltiple
     16523 = [13, 31, 41] In 0.000253915786743 seconds
- 2-Número compuesto por dos primos
+ 2. Número compuesto por dos primos
     26233 = [37, 709] In 0.00139808654785 seconds
- 3-Número primo
+ 3. Número primo
     27253 = [27253] In 0.0481271743774 seconds
     68171 = [68171] In 0.118710041046 seconds
  
  Nivel batido. El número del apartado dos, que tomaremos como referencia está todavía en
  el orden de los milisegundos.
 
--Nivel 6
- 1-Número compuesto múltiple
++ Nivel 6
+ 1. Número compuesto múltiple
     372531 = [3, 23, 5399] In 0.00950002670288 seconds
- 2-Número compuesto por dos primos
+ 2. Número compuesto por dos primos
     332621 = [487, 683] In 0.00151205062866 seconds
- 3-Número primo
+ 3. Número primo
     375643 = [375643] In 0.667051076889 seconds
 
 Nivel batido. Seguimos en milisegundos para el número (2) pero estamos en más de medio
 segundo para el número primo.
 
--Nivel 7
- 1-Número compuesto múltiple
++ Nivel 7
+ 1. Número compuesto múltiple
     5577944 = [2, 2, 2, 19, 36697] In 0.064346075058 seconds
- 2-Número compuesto por dos primos
+ 2. Número compuesto por dos primos
     2713147 = [557, 4871] In 0.00906491279602 seconds
- 3-Número primo
+ 3. Número primo
     5587943 = [5587943] In 9.97602105141 seconds
 
 Nivel batido. Para los números (1) y (2) los tiempos siguen siendo bajas (centesimas y
 milesimas de segundo, pero para el número (3) el tiempo a subido a casi 10 segundos, lo
 que supone multiplicar por más de 10 el tiempo del número (3) del nivel 6.
 
--Nivel 8
- 1-Número compuesto múltiple
++ Nivel 8
+ 1. Número compuesto múltiple
     12773543 = [29, 151, 2917] In 0.00515103340149 seconds
- 2-Número compuesto por dos primos
+ 2. Número compuesto por dos primos
     26503111 = [4871, 5441] In 0.0102159976959 seconds
- 3-Número primo
+ 3. Número primo
     12763547 = [12763547] In 22.8130741119 seconds
 
 Nivel batido. 
 
--Nivel 9
-
- 1-Número compuesto múltiple
++ Nivel 9
+ 1. Número compuesto múltiple
     455133121 = [139, 1237, 2647] In 0.00713801383972 seconds
     370918413 = [3, 3, 3, 71, 181, 1069] In 0.00222587585449 seconds
- 2-Número compuesto por dos primos
+ 2. Número compuesto por dos primos
     370918411 = [5441, 68171] In 0.154046058655 seconds
- 3-Número primo
+ 3. Número primo
     370918423 = [370918423] In 662.737498045 seconds 
 
 Nive batido. Esta vez el caso (3) ha tardado algo más de 11 minutos, lo cual es un tiempo
@@ -283,7 +299,7 @@ programa que reduzca el tiempo de cálculo.
 
 
     
-VERSION 1.1
+### VERSION 1.1
 
 En la versión 1.0 fuimos capaces de llegar al nivel 9, sin embargo el tiempo necesario
 para determinar que un número es primo en este nivel se multiplico por más de 10 con
@@ -1398,8 +1414,8 @@ problema en este segmento se reduce más rápido.
 
 
 
-ATOMIZADO DEL PARALELISMO
-Versión 2.3
+### ATOMIZADO DEL PARALELISMO
+**Versión 2.3**
 
 Para aprovechar mejor el código del paralelismo secuencial vamos a dividir el problema en
 un número mayor de segmentos.  Al haber más segmentos, estos serán más pequeños, la
@@ -1445,7 +1461,7 @@ Para calcular el tamaño de los segmentos hacemos lo siguiente:
 
 
 
-Comunicación entre padre e hijos (Condiciones)
+#### Comunicación entre padre e hijos (Condiciones)
 
 Para que el padre se entere de cuando ha terminado un hijo, y pueda lanzar otro nuevo, se
 utiliza una variable de tipo "multiprocessing Condition" para sincronizar los procesos.
@@ -1483,10 +1499,17 @@ forma efectiva de recorrer una lista y modificarla, ya que no es seguro recorrer
 lista y eliminar elementos intermedios de esta.
 
 
+#### Validación de resultados 
+**Versión 2.3.4**
+
+Además de comprobar que el producto de los factores obtenidos da como resultado el número
+original, se utiliza el módulo [gmpy2](https://gmpy2.readthedocs.io/en/latest/) para
+comprobar que cada uno de los factores es probablemente un número primo:
+
+`if gmpy2.is_prime(item):`
 
 
-
-Debilidades del modelo v2.3
+#### Debilidades del modelo v2.3
 
 
 El modelo basado en multiples segmentos de pequeño tamaño que se ejecutan en paralelo
@@ -1625,7 +1648,7 @@ Nivel batido.  Con las mejoras introducidas en esta versión 2.3 el rendimiento 
 **Version 2.4**
 
 En esta versión vamos a procesar los segmentos de forma aleatoria, en lugar de
-secuencial.  Se definen dos partes en la factorización claramente diferenciadas: _fase 1_
+secuencial.  Se definen dos partes en la factorización claramente diferenciadas: _fase 1_;
 _fase general_
 
 + **fase 1**.- En esta fase se recorre el primer grupo de candidatos, durante un tiempo
@@ -1676,13 +1699,13 @@ recorrer todos los segmentos y el tiempo será el mismo en cada ejecución.
 #### Pruebas de la version 2.4
 
 + Nivel 16
- 1. Número compuesto múltiple
+ 1. Número compuesto múltiple  
     3644792236778694 = [2, 3, 101, 42473, 141607813L] In 0.139 seconds
 
- 2. Número compuesto por dos primos
+ 2. Número compuesto por dos primos  
     3849788417036503 = [59423701, 64785403L] In 21.8415 seconds
 
- 3. Número primo
+ 3. Número primo  
     5332147896211517 = [5332147896211517L] In 22.9942 seconds
 
     5332147896211517 = [5332147896211517L] In 23.6767 seconds
@@ -1690,13 +1713,13 @@ recorrer todos los segmentos y el tiempo será el mismo en cada ejecución.
 **Nivel batido**
 
 + Nivel 17
- 1. Número compuesto múltiple
+ 1. Número compuesto múltiple  
     64795512344765945 = [5, 31, 83, 157, 653, 49127233L] In 0.1051 seconds
 
- 2. Número compuesto por dos primos
+ 2. Número compuesto por dos primos  
     32563672784171761 = [67894373, 479622557L] In 32.3036 seconds
 
- 3. Número primo
+ 3. Número primo  
     55641397544639089 = [55641397544639089L] In 63.5148 seconds
 
 **Nivel batido**. El tiempo de factorización del número del tipo (2) depende de la
@@ -1705,13 +1728,13 @@ ejecución, cada una tarda un tiempo distinto.
 
 + Nivel 18
 
- 1. Número compuesto múltiple
+ 1. Número compuesto múltiple  
     954788612384655179 = [53077, 118429, 151894763L] In 0.1867 seconds
 
- 2. Número compuesto por dos primos
+ 2. Número compuesto por dos primos  
     498542964342543929 = [652231511, 764365039L] In 27.4718 seconds
 
- 3. Número primo
+ 3. Número primo  
     546698741123646019 = [546698741123646019L] In 164.9989 seconds
 
 **Nivel batido**
@@ -1733,15 +1756,14 @@ ejecución, cada una tarda un tiempo distinto.
 
 + Nivel 20
 
- 1. Número compuesto múltiple
+ 1. Número compuesto múltiple  
     59774558321697556676 = [2, 2, 23, 2069, 314027771879387L] In 11.8584 seconds
 
- 2. Número compuesto por dos primos
-
-    36579649644065170163 = [5568743671L, 6568743653L] In 13.4473 seconds
+ 2. Número compuesto por dos primos  
+    36579649644065170163 = [5568743671L, 6568743653L] In 13.4473 seconds   
     25841129207805312677 = [3526889461L, 7326889457L] In 502.3551 seconds
     
- 3. Número primo
+ 3. Número primo  
     52369844786321568503 = [52369844786321568503L] In 1845.6705 seconds (30 minutos aprox.)
 
     52369844786321568503 = [52369844786321568503L] In 2371.4282 seconds (más de 39
