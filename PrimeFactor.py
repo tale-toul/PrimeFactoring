@@ -121,22 +121,22 @@ def factorize_with_limits(compnum,own_results,nms,loc,event,cond,candidate=2,las
         candidate += 2 #Now candidate equals 7
 #----MAIN LOOP----
     while candidate <= max_candidate:
-        while compnum%candidate == 0: # For candidates ending in 7
+        while compnum%candidate == 0: 
             loc.acquire()
             compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1)
             loc.release()
         candidate += increment[0] #This increment depends on the incremnet list selected bejore
-        while compnum%candidate == 0: #For candidates ending in 9
+        while compnum%candidate == 0: 
             loc.acquire()
             compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1)
             loc.release()
         candidate += increment[1] #This increment depends on the incremnet list selected bejore
-        while compnum%candidate == 0: #For candidates ending in 1
+        while compnum%candidate == 0: 
             loc.acquire()
             compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1)
             loc.release()
         candidate += increment[2] #This increment depends on the incremnet list selected bejore
-        while compnum%candidate == 0: #For candidates ending in 3
+        while compnum%candidate == 0: 
             loc.acquire()
             compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1)
             loc.release()
@@ -152,21 +152,21 @@ def factorize_with_limits(compnum,own_results,nms,loc,event,cond,candidate=2,las
 
 #Parameters: compnum.- number to factor
 #           possible_factors.- a list of posible factors to try
-#Returns: a list of the found factors within the set provided, hopefully only the prime
-#       factors
+#Returns:   a list of the found factors within the set provided, hopefully only the prime
+#           factors. The last element of the list is the compnum itself
 def factorize_with_factors(compnum,possible_factors):
-    '''Since there is no need to look for candidate the funcion is a lot simpler'''
-    max_candidate=int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
+    '''Since there is no need to actually look for candidate the funcion is a lot simpler'''
+    max_candidate=int(math.ceil(math.sqrt(compnum))) 
     pfactors=[] #List of found factors
     #Remove duplicates and order the list in reverse order
     order_uniq_pfactors=list(set(possible_factors))
     order_uniq_pfactors.sort(key=int,reverse=True)
     candidate=order_uniq_pfactors.pop()
     while candidate <= max_candidate:
-        while compnum%candidate == 0: # For candidates ending in 7
+        while compnum%candidate == 0: 
             pfactors.append(candidate)
             compnum /= candidate
-            max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
+            max_candidate = int(math.ceil(math.sqrt(compnum))) 
         if order_uniq_pfactors:
             candidate=order_uniq_pfactors.pop() #I'm not checking that the list is empty
     if compnum != 1: pfactors.append(compnum)
@@ -176,8 +176,8 @@ def factorize_with_factors(compnum,possible_factors):
 
 #Parameters: none
 #Return value: the arguments found in the command line
-#Parses the command line arguments
 def parse_arguments():
+    '''Parses the command line arguments'''
     parser=argparse.ArgumentParser(description="Find the prime factors of an integer number")
     disjunt=parser.add_mutually_exclusive_group()
     #Next one is actually optional, just in case we are running the test batch
@@ -187,13 +187,14 @@ def parse_arguments():
     parser.add_argument("-l", "--lastcandi", help="Last candidate to check for primes", type=int)
     disjunt.add_argument("--addtest", metavar="FILE",  help="Adds the results of factoring this number, as a test case, to the file specified")
     disjunt.add_argument("--runtest", metavar="FILE", help="Run the test cases")
-    return(parser.parse_args()) 
+    return parser.parse_args()
 
 #Parameters: The file to read the test cases from
 #Return: the dictionary containing the test cases
-#Tries to read a file containing the json serialized dictionary containing the test
-#cases and load them into a dictionary.  If the file doesn't exists returns an empty dictionary
 def read_test_cases(file):
+    '''Tries to read a file containing the json serialized dictionary with the test cases
+    and load them into a dictionary.  If the file doesn't exists returns an empty
+    dictionary'''
     test_cases_dict=dict()
     if os.path.isfile(file): #If file exists, load it
         try:
@@ -208,9 +209,9 @@ def read_test_cases(file):
 
 #Parameters: The file to read the test cases from
 #Return: void
-#Factorizes the numbers stored as test cases and compares the results with the ones found
-#in the test cases
 def run_test_cases(batch_file):
+    '''Factors the numbers stored as test cases and compares the results with the ones
+    found in the test cases'''
     global t_start
     test_cases=read_test_cases(batch_file) #Load or create a dictionary of test cases
     count=1 #The case number I'm about to try
@@ -260,16 +261,10 @@ def signal_show_current_status(signum,stack):
 def clean_results(results_to_clean,num_to_factor):
     '''Removes the composite numbers and leaves only the prime numbers from the result
     set given.'''
-    wfactors=list()
-    for result_tranche in results_to_clean:
-        if len(result_tranche) == 1: pass #No factors in this tranche, carry on
-        else: #There are possible prime factors in this tranche
-            wfactors += result_tranche
-    if wfactors:
-        return factorize_with_factors(num_to_factor,wfactors)
-    else:
-        return [num_to_factor]
-
+    # This is a list comprehension that flattens the list of lists that is # results_to_clean
+    wfactors=[ffactor for result_tranche in results_to_clean 
+                            for ffactor in result_tranche]
+    return factorize_with_factors(num_to_factor,wfactors) if wfactors else [num_to_factor]
 
 
 #Parameters: num_to_factor.- The number to factor
