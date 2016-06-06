@@ -1806,3 +1806,17 @@ cifra en que tiene que terminar el candidato.
 
 Este nuevo código tiene menos líneas y es más simple y rápido, aunque probablemente es más
 dificil de entender, de ahí esta explicación.
+
+
+
+### PARALELISMO EN RED
+**Version 3.0**
+
+Vamos a extender la capacidad de buscar factores de forma paralela a otros equipos
+conectados a través de la red.
+
++ Usamos Twisted para conectar a los distintos factorizadores.
++ El código de red se ejecuta en un proceso independiente, por el tipo de funcionamiento
+  de programación asincrona orientada a eventos.
++ La comunicación entre el proceso de red y el proceso padre la haremos mediante colas
+  (Queue)

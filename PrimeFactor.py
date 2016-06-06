@@ -359,6 +359,7 @@ def factor_broker(num_to_factor,bottom,top):
                 if arguments.verbose:
                     print "  +Starting process %s in segment %s" % (factor_eng[-1][1].name,factor_eng[-1][5])
                 slots -=1
+#While remote requests pending, this could be a Queue
             cond.wait() #Wait for any of the factoring process to finish
             print "Woken up at %.2f" % time.time()
             temp_proc_list=list()
