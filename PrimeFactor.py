@@ -347,8 +347,9 @@ def factor_broker(num_to_factor,bottom,top):
             print "Number of segments: %d" % len(segments)
         cond.acquire()
         slots=min(num_cpus,len(segments))
-        remaining_time=groups_of_candidates * phase1_time * 1.11 / slots  #Add an extra 11% to the figure
-        if arguments.verbose: print "Remaining time (if no more candidates): %.2f seconds" % remaining_time
+        if segments: #If factoring didn't finished in phase 1
+            remaining_time=groups_of_candidates * phase1_time * 1.11 / slots  #Add an extra 11% to the figure
+            if arguments.verbose: print "Remaining time (if no more candidates): %.2f seconds" % remaining_time
         running_processes=list()
         while segments: # While segments are available
             while slots: # While slots are still available
