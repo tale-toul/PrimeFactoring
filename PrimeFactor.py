@@ -293,9 +293,12 @@ def factor_broker(num_to_factor,bottom,top):
     #[4].-event.- a multiprocessing Event to signal the factor broker that a process in the
     #       middle of being relaunched, is ready for termination
     #[5].-segment.- the candidate space for this process
+    #@The following variables should be moved to a configuration file@#
     phase1_time=10 #Time to run to get speed of candidate test in this machine
     max_segments=100 #Maximun number of limits
     max_multiplier=10 #Maximun multiplier for the amount of candidates in a segment
+    thres_time_daemon=300 #Time in seconds from which we should start accepting remote clients
+    #@The previous variables should be moved to a configuration file@#
     results_dirty=list() #A list of lists with the results of every segment
     num_cpus=multiprocessing.cpu_count() #Number of CPUs in this computer
     while list_of_nums_to_factor:
@@ -345,14 +348,19 @@ def factor_broker(num_to_factor,bottom,top):
         if arguments.verbose: 
             print "Factors found in phase 1: %s" % factor_eng[-1][0]
             print "Number of segments: %d" % len(segments)
-        cond.acquire()
         slots=min(num_cpus,len(segments))
         if segments: #If factoring didn't finished in phase 1
             remaining_time=groups_of_candidates * phase1_time * 1.11 / slots  #Add an extra 11% to the figure
             if arguments.verbose: print "Remaining time (if no more candidates): %.2f seconds" % remaining_time
+        if remaining_time > thres_time_daemon: 
+            if arguments.verbose: print "Daemonize"
+            import NetCodePrimeF
+            daemon=Process(target=NetCodePrimeF.server_netcode)
+            daemon.start()
         running_processes=list()
-        while segments: # While segments are available
-            while slots: # While slots are still available
+        cond.acquire()
+        while segments: # While segments available
+            while slots: # While slots available
                 pick_segment=random.randint(0,len(segments)-1)
                 factor_eng.append(create_process(num_to_factor,manager,cond,segments.pop(pick_segment)))
                 running_processes.append(factor_eng[-1])
@@ -390,6 +398,8 @@ def factor_broker(num_to_factor,bottom,top):
         for last_proc in running_processes:
             last_proc[1].join()
             print "\tProcess is finished:",last_proc[1].name,last_proc[0],last_proc[5]
+        #@Signal the daemon to cancel the remote clients@#
+    #@Signal de daemon to close down@#
     for r in factor_eng: #Collect the factors found in each segment
         results_dirty.append(r[0][:]) #Get the results from every process
     return clean_results(results_dirty,orig_num_to_factor)

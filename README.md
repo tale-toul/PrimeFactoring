@@ -1463,17 +1463,17 @@ Para calcular el tamaño de los segmentos hacemos lo siguiente:
 
 #### Comunicación entre padre e hijos (Condiciones)
 
-Para que el padre se entere de cuando ha terminado un hijo, y pueda lanzar otro nuevo, se
-utiliza una variable de tipo "multiprocessing Condition" para sincronizar los procesos.
-Este tipo de variable es una combinación de Event y Lock, tienen un Lock que es necesario
-adquirir antes de realizar otras operacines y tiene un metodo notify que sirve para avisar
-a otros procesos.
+Para que el proceso padre se entere de cuando ha terminado un hijo, y pueda lanzar otro
+nuevo, se utiliza una variable de tipo _multiprocessing Condition_.  Este tipo de
+variable es una combinación de _Event_ y _Lock_, tienen un Lock que es necesario adquirir
+antes de realizar otras operacines y tiene un metodo notify que sirve para avisar a otros
+procesos.
 
-En este caso, el proceso padre, desde la función factor_broker, crea un objeto de tipo
+En este caso, el proceso padre, desde la función `factor_broker`, crea un objeto de tipo
 Lock que usa para crear un objeto de tipo Condition, este objeto Condition es compartido
 por todos los procesos, padre e hijos.
 
-El padre adquiere el Lock del objeto Condition llamando a su método acquire, entonces crea
+El padre adquiere el Lock del objeto _Condition_ llamando a su método acquire, entonces crea
 el primer grupo de procesos hijo (factorizadores) y libera el Lock llamando al metodo
 wait.  Esta llamada no solo libera el Lock sino que detiene la ejecución del proceso padre
 a la espera que de alguno de los hijos llame al método notify. 
