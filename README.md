@@ -1820,3 +1820,26 @@ conectados a través de la red.
   de programación asincrona orientada a eventos.
 + La comunicación entre el proceso de red y el proceso padre la haremos mediante colas
   (Queue)
+
+#### FactorClient
+**Version 1.0.0
+
+Para poder distribuir el trabajo de factorización entre distintos equipos en red
+necesitamos un cliente que sea capaz de conectarse al servidor, solicitar parte del
+trabajo, procesarlo y devolverlo al servidor.
+
+Este cliente usará código asíncrono basado en twisted
+
+Necesitará soportar algunas opciones y parametros de linea de comandos como:
+
++ Modo verbose, activado o desactivado
++ Direccion de red para conectarse al servidor; estará compuesta por un nombre de host o
+IP correspondiente, y un puerto.
+
+El cliente no soportará opciones como:
+
++ Número a factorizar; lo recibirá del servidor
++ Segmento dentro del cual buscar los factores; lo recibirá del servidor
++ Generar casos de prueba
++ Ejecutar casos de prueba
+

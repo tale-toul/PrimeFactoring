@@ -13,6 +13,8 @@ import math,random
 import multiprocessing
 from multiprocessing import Process,Manager,Lock,Event,Condition
 import gmpy2
+import NetCodePrimeF
+
 #import pdb
 
 factors=list() #List of number's found factors
@@ -43,11 +45,11 @@ def validate_factors(num,factors):
 #           phase1.- Are we running in phase1 mode, if not leave as soon as we find a
 #Returns: The updated values of compnum and max_candidate. The own_results is also
 #         updated, but this is done in-place
-def update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1):
+def update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,phase1):
     '''This function is called when a new factor is found. Adds the factor found to the
     results list; updates the number to factor, dividing it by the factor found; and
-    updates the maximun candidate, making it -1 in case we are in phase 1, what causes and
-    inmediate exit of the factoring process '''
+    updates the maximun candidate, making it -1 in case we are NOT in phase 1, what causes
+    and inmediate exit of the factoring process '''
     own_results.append(candidate)
     compnum /= candidate
     if not phase1:
@@ -103,42 +105,42 @@ def factorize_with_limits(compnum,own_results,nms,loc,event,cond,candidate=2,las
     if candidate == 2: #This condition is here because the initial value of candidate may be different from 2
         while compnum%candidate == 0:  #Candidate = 2, consider it as a special case
             loc.acquire()
-            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1)
+            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,phase1)
             loc.release()
         candidate += 1 #Now candidate equals 3
     if candidate == 3: #This condition is here because the initial value of candidate may be different from 2
         while compnum%candidate == 0:
             loc.acquire()
-            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1)
+            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,phase1)
             loc.release()
         candidate += 2 #Now candidate equals 5
     if candidate == 4: candidate = 5 #Upgrade to the next meaninful candidate
     if candidate == 5: #This condition is here because the initial value of candidate may be different from 2
         while compnum%candidate == 0:
             loc.acquire()
-            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1)
+            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,phase1)
             loc.release()
         candidate += 2 #Now candidate equals 7
 #----MAIN LOOP----
     while candidate <= max_candidate:
         while compnum%candidate == 0: 
             loc.acquire()
-            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1)
+            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,phase1)
             loc.release()
         candidate += increment[0] #This increment depends on the incremnet list selected bejore
         while compnum%candidate == 0: 
             loc.acquire()
-            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1)
+            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,phase1)
             loc.release()
         candidate += increment[1] #This increment depends on the incremnet list selected bejore
         while compnum%candidate == 0: 
             loc.acquire()
-            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1)
+            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,phase1)
             loc.release()
         candidate += increment[2] #This increment depends on the incremnet list selected bejore
         while compnum%candidate == 0: 
             loc.acquire()
-            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,loc,phase1)
+            compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate,phase1)
             loc.release()
         candidate += increment[3] #This increment depends on the incremnet list selected bejore
     loc.acquire()
@@ -297,7 +299,7 @@ def factor_broker(num_to_factor,bottom,top):
     phase1_time=10 #Time to run to get speed of candidate test in this machine
     max_segments=100 #Maximun number of limits
     max_multiplier=10 #Maximun multiplier for the amount of candidates in a segment
-    thres_time_daemon=300 #Time in seconds from which we should start accepting remote clients
+    thres_time_daemon=50 #Time in seconds from which we should start accepting remote clients
     #@The previous variables should be moved to a configuration file@#
     results_dirty=list() #A list of lists with the results of every segment
     num_cpus=multiprocessing.cpu_count() #Number of CPUs in this computer
@@ -349,14 +351,12 @@ def factor_broker(num_to_factor,bottom,top):
             print "Factors found in phase 1: %s" % factor_eng[-1][0]
             print "Number of segments: %d" % len(segments)
         slots=min(num_cpus,len(segments))
-        if segments: #If factoring didn't finished in phase 1
-            remaining_time=groups_of_candidates * phase1_time * 1.11 / slots  #Add an extra 11% to the figure
-            if arguments.verbose: print "Remaining time (if no more candidates): %.2f seconds" % remaining_time
+        remaining_time = groups_of_candidates * phase1_time * 1.11 / slots if segments else 0
         if remaining_time > thres_time_daemon: 
             if arguments.verbose: print "Daemonize"
-            import NetCodePrimeF
             daemon=Process(target=NetCodePrimeF.server_netcode)
             daemon.start()
+        else: daemon=None
         running_processes=list()
         cond.acquire()
         while segments: # While segments available
@@ -399,11 +399,26 @@ def factor_broker(num_to_factor,bottom,top):
             last_proc[1].join()
             print "\tProcess is finished:",last_proc[1].name,last_proc[0],last_proc[5]
         #@Signal the daemon to cancel the remote clients@#
-    #@Signal de daemon to close down@#
+    if daemon and daemon.is_alive(): #Shutdown the network daemon
+        finish_daemon()
     for r in factor_eng: #Collect the factors found in each segment
         results_dirty.append(r[0][:]) #Get the results from every process
     return clean_results(results_dirty,orig_num_to_factor)
     
+#Parameters: None
+#Return value: None
+def finish_daemon():
+    '''Connects to the network "twisted" daemon and sends a shutdown request'''
+    print "Ask daemon politely to die"
+    import socket
+    s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    s.connect(('localhost',NetCodePrimeF.internal_port))
+    s.settimeout(0.5)
+    try:
+        s.sendall("This is just a test\r\n")
+    except socket.timeout:
+        print "Socket timeout, just kill the bastard"
+        daemon.terminate()
 
 #Parameters: num_to_factor.- The number to factor
 #            manager.- a multiprocessing manager to share variables among processes
@@ -416,7 +431,7 @@ def create_process(num_to_factor,manager,cond,segment,phase1=False):
     nms=manager.Namespace() #Namespace to create variables across processes, one for every process
     nms.end_of_process=False
     loc=Lock() #A lock to controll access to results (factors found), one for every process
-    event=Event() #An event object to set when the process is ready to dye, one for every process
+    event=Event() #An event object to set when the process is ready to die, one for every process
     job=Process(target=factorize_with_limits,args=(num_to_factor,own_results,nms,loc,event,cond,segment[0],segment[1],phase1))
     return [own_results,job,nms,loc,event,segment]
 
