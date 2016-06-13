@@ -11,6 +11,8 @@ internal_port=8010
 #Protocol class
 class PFServerProtocol(basic.LineReceiver): 
 
+    messages={'REGISTER': 1}
+
     def connectionLost(self,reason):
        print "Conection closed with %s due to %s" % (self.transport.getPeer(),reason)
 
@@ -23,8 +25,14 @@ class PFServerProtocol(basic.LineReceiver):
         print "line received:\n%s" %line
         proto_msg=line.split(':',1)
         if len(proto_msg) == 2:
-            next_step_proto=self.factory.messages.get(proto_msg[0],'UNKNOWN MESSAGE')
+            next_step_proto=self.messages.get(proto_msg[0],self.unknown_message)
+            next_step_proto(proto_msg[1])
+        else:
+            self.unknown_message(line)
 
+    def unknown_message(self,message):
+        self.transport.write("UNKNOWN REQUEST\n%s\r\n" % message)
+        self.transport.loseConnection()
 
 
 
@@ -32,7 +40,6 @@ class PFServerProtocol(basic.LineReceiver):
 class PFServerProtocolFactory(Factory): 
     protocol=PFServerProtocol
 
-    messages={'REGISTER': 1}
 
 
 

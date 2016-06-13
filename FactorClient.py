@@ -14,7 +14,7 @@ class FCProtocol(basic.LineReceiver):
         proto_msg=line.split(':',1)
         if len(proto_msg) == 2 and proto_msg[0] == 'READY TO ACCEPT REQUESTS':
             print "Sending register request"
-            self.transport.write("REGISTER:")
+            self.transport.write("REGISTER:\r\n")
         else:
             print "Protocol message unknown"
             self.transport.loseConnection()
