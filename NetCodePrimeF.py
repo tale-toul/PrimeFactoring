@@ -56,7 +56,7 @@ class PFServerProtocol(basic.LineReceiver):
         print "Host %s requesting factoring job" % self.peer.host
         if job_ID in self.factory.registered_clients: #Place job request in queue
             self.factory.reqres_queue.put(NetJob.NetJob(job_ID,'REQUEST'))
-            print "Request sent to parent"
+            print "Request sent to parent. I should use a deferred of some kind here"
         else:
             print "Client not registered"
             self.transport.loseConnection()

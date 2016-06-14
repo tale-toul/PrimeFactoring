@@ -296,8 +296,8 @@ def factor_broker(num_to_factor,bottom,top):
     #       middle of being relaunched, is ready for termination
     #[5].-segment.- the candidate space for this process
     #@The following variables should be moved to a configuration file@#
-    in_queue=Queue() #Receive requests and results from network clients
-    out_queue=Queue() #Send jobs and notifications to network clients
+    reqres_queue=Queue() #Receive requests and results from network clients
+    job_queue=Queue() #Send jobs and notifications to network clients
     phase1_time=10 #Time to run to get speed of candidate test in this machine
     max_segments=100 #Maximun number of limits
     max_multiplier=10 #Maximun multiplier for the amount of candidates in a segment
@@ -354,9 +354,10 @@ def factor_broker(num_to_factor,bottom,top):
             print "Number of segments: %d" % len(segments)
         slots=min(num_cpus,len(segments))
         remaining_time = groups_of_candidates * phase1_time * 1.11 / slots if segments else 0
+        print "Remaining time %d" % remaining_time
         if remaining_time > thres_time_daemon: 
             if arguments.verbose: print "Daemonize"
-            daemon=Process(target=NetCodePrimeF.server_netcode,args(in_queue,out_queue))
+            daemon=Process(target=NetCodePrimeF.server_netcode,args=(reqres_queue,job_queue))
             daemon.start()
         else: daemon=None
         running_processes=list()
@@ -370,6 +371,9 @@ def factor_broker(num_to_factor,bottom,top):
                 if arguments.verbose:
                     print "  +Starting process %s in segment %s" % (factor_eng[-1][1].name,factor_eng[-1][5])
                 slots -=1
+            while not reqres_queue.empty():
+                reqres_object=reqres_queue.get_nowait()
+                print reqres_object
 #While remote requests pending, this could be a Queue
             cond.wait() #Wait for any of the factoring process to finish
             print "Woken up at %.2f" % time.time()
