@@ -7,23 +7,47 @@ from twisted.protocols import basic
 #Factor Client Protocol
 class FCProtocol(basic.LineReceiver):
 
-     def connectionMade(self):
+    def __init__(self,factory):
+        self.state='INI'
+        self.factory=factory
+
+    def connectionMade(self):
         if arguments.verbose: print ("Connection made")
 
-     def lineReceived(self,line):
+    def lineReceived(self,line):
         proto_msg=line.split(':',1)
-        if len(proto_msg) == 2 and proto_msg[0] == 'READY TO ACCEPT REQUESTS':
-            print "Sending register request"
-            self.transport.write("REGISTER:\r\n")
+        if len(proto_msg) == 2: 
+            self.speak_proto(proto_msg)
         else:
-            print "Protocol message unknown"
+            print "Received unknown message : %s" % line
             self.transport.loseConnection()
+
+    def connectionLost(self,reason):
+       print "Conection closed with %s due to %s" % (self.transport.getPeer(),reason)
+       reactor.stop()
+
+    def speak_proto(self,message):
+        if self.state=='INI' and message[0].strip() == 'READY TO ACCEPT REQUESTS':
+            if arguments.verbose: print "Sending register request"
+            self.transport.write("REGISTER:\r\n")
+            self.state='REG'
+        elif self.state=='REG' and message[0].strip() =='REGISTERED':
+            if arguments.verbose: print "Sending job request"
+            self.factory.ID=message[1].strip()
+            self.transport.write("REQUEST JOB:%s\r\n" %self.factory.ID)
+            self.state='RJOB'
+        #elif: self.state=='RJOB' and message[0] =='
+
 
 
 
 #Factor Client Factory
 class FCFactory(protocol.ClientFactory):
-    protocol=FCProtocol
+
+    ID=None
+
+    def buildProtocol(self,addr):
+        return FCProtocol(self)
 
     def clientConnectionFailed(self,connector,reason):
         Address=connector.getDestination()

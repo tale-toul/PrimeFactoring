@@ -11,7 +11,7 @@ import signal
 import inspect
 import math,random
 import multiprocessing
-from multiprocessing import Process,Manager,Lock,Event,Condition
+from multiprocessing import Process,Manager,Lock,Event,Condition,Queue
 import gmpy2
 import NetCodePrimeF
 
@@ -296,6 +296,8 @@ def factor_broker(num_to_factor,bottom,top):
     #       middle of being relaunched, is ready for termination
     #[5].-segment.- the candidate space for this process
     #@The following variables should be moved to a configuration file@#
+    in_queue=Queue() #Receive requests and results from network clients
+    out_queue=Queue() #Send jobs and notifications to network clients
     phase1_time=10 #Time to run to get speed of candidate test in this machine
     max_segments=100 #Maximun number of limits
     max_multiplier=10 #Maximun multiplier for the amount of candidates in a segment
@@ -354,7 +356,7 @@ def factor_broker(num_to_factor,bottom,top):
         remaining_time = groups_of_candidates * phase1_time * 1.11 / slots if segments else 0
         if remaining_time > thres_time_daemon: 
             if arguments.verbose: print "Daemonize"
-            daemon=Process(target=NetCodePrimeF.server_netcode)
+            daemon=Process(target=NetCodePrimeF.server_netcode,args(in_queue,out_queue))
             daemon.start()
         else: daemon=None
         running_processes=list()
