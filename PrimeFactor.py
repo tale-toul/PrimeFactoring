@@ -276,6 +276,7 @@ def factor_broker(num_to_factor,bottom,top):
     '''Divides the factoring problem in many equal segments.  Calls the factorize function
     for the smaller problems'''
     segments=list() #The list of segments to divide the problem into
+    pending_remote_segments=list()
     list_of_nums_to_factor=[num_to_factor] #The list of pending components of the number to factor
     orig_num_to_factor=num_to_factor #The original num_to_factor
     manager=Manager() #To access common elements among processes
@@ -371,10 +372,20 @@ def factor_broker(num_to_factor,bottom,top):
                 if arguments.verbose:
                     print "  +Starting process %s in segment %s" % (factor_eng[-1][1].name,factor_eng[-1][5])
                 slots -=1
-            while not reqres_queue.empty():
+            while not reqres_queue.empty() and segments:
                 reqres_object=reqres_queue.get_nowait()
-                print reqres_object
-#While remote requests pending, this could be a Queue
+                pick_segment=random.randint(0,len(segments)-1)
+                remote_segment=segments.pop(pick_segment)
+                #In the next list the segments delegated to the remote clients are,
+                #once the results are returned they must be removed from here.
+                # If the local segments are all processed and there are some remote
+                # segments in this list, the we take them from here, don't wait for the
+                # remote clients.
+                pending_remote_segments.append(remote_segment)
+                reqres_object.job_type='RESPONSE'
+                reqres_object.num=num_to_factor
+                reqres_object.segment=remote_segment
+                job_queue.put(reqres_object)
             cond.wait() #Wait for any of the factoring process to finish
             print "Woken up at %.2f" % time.time()
             temp_proc_list=list()

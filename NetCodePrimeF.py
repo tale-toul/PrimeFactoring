@@ -2,6 +2,7 @@
 
 from twisted.internet import reactor
 from twisted.internet.protocol import Protocol,Factory
+from twisted.internet.task import LoopingCall
 from twisted.protocols import basic
 import datetime
 import md5
@@ -51,12 +52,15 @@ class PFServerProtocol(basic.LineReceiver):
             self.transport.write("REGISTERED:%s\r\n" % reg_md5)
             print "Client registered"
 
-    #Parameters: the message must contain the client ID
     def serve_request(self,job_ID):
+        '''Run when the "REQUEST JOB" protocol command is received from the client'''
         print "Host %s requesting factoring job" % self.peer.host
         if job_ID in self.factory.registered_clients: #Place job request in queue
-            self.factory.reqres_queue.put(NetJob.NetJob(job_ID,'REQUEST'))
-            print "Request sent to parent. I should use a deferred of some kind here"
+            NetJob.NetJob(job_ID)
+            self.factory.reqres_queue.put(,'REQUEST'))
+            print "Request sent to parent, waiting for response"
+            #@ Call a function in the factory that possibly returns a deferred and waits
+            # for the factor job to arrive @#
         else:
             print "Client not registered"
             self.transport.loseConnection()
@@ -79,10 +83,12 @@ class PFServerProtocolFactory(Factory):
         self.job_queue=job_queue
 
     def reg_client(self,host,MD5,timestamp):
+        '''Keeps a record of registered clients'''
         if not MD5 in self.registered_clients:
             self.registered_clients[MD5]={'HOST': host, 'REG_TIME': timestamp}
             return True
 
+    def get_assigned_job(self,):
 
 
 #Inter process comunications
