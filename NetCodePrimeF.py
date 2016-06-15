@@ -52,12 +52,12 @@ class PFServerProtocol(basic.LineReceiver):
             self.transport.write("REGISTERED:%s\r\n" % reg_md5)
             print "Client registered"
 
-    def serve_request(self,job_ID):
+    def serve_request(self,clientID):
         '''Run when the "REQUEST JOB" protocol command is received from the client'''
         print "Host %s requesting factoring job" % self.peer.host
-        if job_ID in self.factory.registered_clients: #Place job request in queue
-            NetJob.NetJob(job_ID)
-            self.factory.reqres_queue.put(,'REQUEST'))
+        if clientID in self.factory.registered_clients: #Place job request in queue
+            request=NetJob.NetJob(clientID,'REQUEST'))
+            self.factory.reqres_queue.put(request)
             print "Request sent to parent, waiting for response"
             #@ Call a function in the factory that possibly returns a deferred and waits
             # for the factor job to arrive @#
@@ -65,8 +65,14 @@ class PFServerProtocol(basic.LineReceiver):
             print "Client not registered"
             self.transport.loseConnection()
 
-    def receive_results(self):
-        pass
+    def fetch_response(self,clientID):
+        while not self.job_queue.empty():
+            response=self.job_queue.get()
+            if response.woker_ID in fetch_response.ordered_responses:
+                fetch_response.ordered_responses[response.worker_ID].append(response)
+            else:
+                fetch_response.ordered_responses[response.worker_ID]=[response]
+
 
 
 
