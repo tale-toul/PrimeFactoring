@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from twisted.internet import reactor
+from twisted.internet import reactor,defer
 from twisted.internet.protocol import Protocol,Factory
 from twisted.internet.task import LoopingCall
 from twisted.protocols import basic
@@ -21,6 +21,9 @@ class PFServerProtocol(basic.LineReceiver):
               'SEND RESULTS': 'receive_results'}
 
     peer=None #Address object
+    loops=5 #Maximun number of attempts to get the jobs from the parent, once the request
+            # has been sent
+    job_retreived=None #Job retreived from the jobs queue
 
     def connectionLost(self,reason):
        print "Conection closed with %s due to %s" % (self.transport.getPeer(),reason)
@@ -59,20 +62,33 @@ class PFServerProtocol(basic.LineReceiver):
             request=NetJob.NetJob(clientID,'REQUEST'))
             self.factory.reqres_queue.put(request)
             print "Request sent to parent, waiting for response"
-            #@ Call a function in the factory that possibly returns a deferred and waits
-            # for the factor job to arrive @#
+            self.wait_for_job(clientID)
         else:
             print "Client not registered"
             self.transport.loseConnection()
 
-    def fetch_response(self,clientID):
-        while not self.job_queue.empty():
-            response=self.job_queue.get()
-            if response.woker_ID in fetch_response.ordered_responses:
-                fetch_response.ordered_responses[response.worker_ID].append(response)
-            else:
-                fetch_response.ordered_responses[response.worker_ID]=[response]
+    def wait_for_job(self,clientID):
+        if not self.factory.lpc_order_jobs.running: #Start the job ordering repeating function call
+            self.factory.lpc_order_jobs.start(3) #This is run from the factory
+        lpc_fetch_jobs=LoopingCall(self.fetch_job,self.clientID)
+        fetch_deferred=lpc_fetch_jobs.start(3.5) #This is run in the protocol
+        fetch_deferred.addCallbacks(job_found,job_not_found)
 
+    def fetch_job(clientID):
+        if self.loops: #Run for a maximun number of loops 
+            self.loops -=1
+            self.job_retreived=self.factory.ordered_jobs.pop(clientID,None)
+            if self.job_retreived:
+                self.lpc_fetch_jobs.stop()
+        else:#If we didn't find a suitable job within time, call Errback
+            raise Exception('Could not get job from parent')
+
+    def job_found(self,result):
+        print "Job found %s" % result
+
+    def job_not_found(self,failure):
+        print failure.getBriefTraceback()
+        self.transport.loseConnection()
 
 
 
@@ -81,8 +97,14 @@ class PFServerProtocol(basic.LineReceiver):
 class PFServerProtocolFactory(Factory): 
     protocol=PFServerProtocol
 
+    #Looping call to order jobs from the job queue 
+    lpc_order_jobs=LoopingCall(self.order_job)
+
     #Client IP; client ID; registration time
     registered_clients=dict()
+
+    #Dictionary of jobs returned by the parent process
+    ordered_jobs=list()
 
     def __init__(self,reqres_queue,job_queue):
         self.reqres_queue=reqres_queue
@@ -94,7 +116,19 @@ class PFServerProtocolFactory(Factory):
             self.registered_clients[MD5]={'HOST': host, 'REG_TIME': timestamp}
             return True
 
-    def get_assigned_job(self,):
+    def order_job(self,clientID):
+        '''Get the elements in the jobs queue and add them to a dictionary indexed by
+        clientID.  A client may have more than one job assigned to it, so the content of
+        the dictionary is a list of NetJob objects '''
+        while not self.job_queue.empty():
+            response=self.job_queue.get()
+            if response.woker_ID in self.ordered_jobs:
+                self.ordered_jobs[response.worker_ID].append(response)
+            else:
+                self.ordered_jobs[response.worker_ID]=[response]
+
+
+
 
 
 #Inter process comunications
