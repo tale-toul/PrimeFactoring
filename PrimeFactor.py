@@ -302,7 +302,7 @@ def factor_broker(num_to_factor,bottom,top):
     phase1_time=10 #Time to run to get speed of candidate test in this machine
     max_segments=100 #Maximun number of limits
     max_multiplier=10 #Maximun multiplier for the amount of candidates in a segment
-    thres_time_daemon=50 #Time in seconds from which we should start accepting remote clients
+    thres_time_daemon=70 #Time in seconds from which we should start accepting remote clients
     #@The previous variables should be moved to a configuration file@#
     results_dirty=list() #A list of lists with the results of every segment
     num_cpus=multiprocessing.cpu_count() #Number of CPUs in this computer
@@ -376,15 +376,16 @@ def factor_broker(num_to_factor,bottom,top):
                 reqres_object=reqres_queue.get_nowait()
                 pick_segment=random.randint(0,len(segments)-1)
                 remote_segment=segments.pop(pick_segment)
-                #In the next list the segments delegated to the remote clients are,
-                #once the results are returned they must be removed from here.
+                # The segments delegated to the remote clients are in the next list 
+                # once the results are returned they must be removed from here.
                 # If the local segments are all processed and there are some remote
-                # segments in this list, the we take them from here, don't wait for the
+                # segments in this list, then we take them from here, don't wait for the
                 # remote clients.
                 pending_remote_segments.append(remote_segment)
                 reqres_object.job_type='RESPONSE'
                 reqres_object.num=num_to_factor
                 reqres_object.segment=remote_segment
+                print "Job request: " , reqres_object
                 job_queue.put(reqres_object)
             cond.wait() #Wait for any of the factoring process to finish
             print "Woken up at %.2f" % time.time()

@@ -59,7 +59,7 @@ class PFServerProtocol(basic.LineReceiver):
         '''Run when the "REQUEST JOB" protocol command is received from the client'''
         print "Host %s requesting factoring job" % self.peer.host
         if clientID in self.factory.registered_clients: #Place job request in queue
-            request=NetJob.NetJob(clientID,'REQUEST'))
+            request=NetJob.NetJob(clientID,'REQUEST')
             self.factory.reqres_queue.put(request)
             print "Request sent to parent, waiting for response"
             self.wait_for_job(clientID)
@@ -70,11 +70,11 @@ class PFServerProtocol(basic.LineReceiver):
     def wait_for_job(self,clientID):
         if not self.factory.lpc_order_jobs.running: #Start the job ordering repeating function call
             self.factory.lpc_order_jobs.start(3) #This is run from the factory
-        lpc_fetch_jobs=LoopingCall(self.fetch_job,self.clientID)
+        lpc_fetch_jobs=LoopingCall(self.fetch_job,clientID)
         fetch_deferred=lpc_fetch_jobs.start(3.5) #This is run in the protocol
-        fetch_deferred.addCallbacks(job_found,job_not_found)
+        fetch_deferred.addCallbacks(self.job_found,self.job_not_found)
 
-    def fetch_job(clientID):
+    def fetch_job(self,clientID):
         if self.loops: #Run for a maximun number of loops 
             self.loops -=1
             self.job_retreived=self.factory.ordered_jobs.pop(clientID,None)
@@ -97,18 +97,18 @@ class PFServerProtocol(basic.LineReceiver):
 class PFServerProtocolFactory(Factory): 
     protocol=PFServerProtocol
 
-    #Looping call to order jobs from the job queue 
-    lpc_order_jobs=LoopingCall(self.order_job)
 
     #Client IP; client ID; registration time
     registered_clients=dict()
 
     #Dictionary of jobs returned by the parent process
-    ordered_jobs=list()
+    ordered_jobs=dict()
 
     def __init__(self,reqres_queue,job_queue):
         self.reqres_queue=reqres_queue
         self.job_queue=job_queue
+        #Looping call to order jobs from the job queue 
+        self.lpc_order_jobs=LoopingCall(self.order_job)
 
     def reg_client(self,host,MD5,timestamp):
         '''Keeps a record of registered clients'''
@@ -116,12 +116,13 @@ class PFServerProtocolFactory(Factory):
             self.registered_clients[MD5]={'HOST': host, 'REG_TIME': timestamp}
             return True
 
-    def order_job(self,clientID):
+    def order_job(self):
         '''Get the elements in the jobs queue and add them to a dictionary indexed by
         clientID.  A client may have more than one job assigned to it, so the content of
         the dictionary is a list of NetJob objects '''
         while not self.job_queue.empty():
             response=self.job_queue.get()
+            print response
             if response.woker_ID in self.ordered_jobs:
                 self.ordered_jobs[response.worker_ID].append(response)
             else:
