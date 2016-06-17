@@ -3,6 +3,9 @@
 import argparse
 from twisted.internet import reactor,protocol
 from twisted.protocols import basic
+import datetime
+import pickle
+import NetJob
 
 #Factor Client Protocol
 class FCProtocol(basic.LineReceiver):
@@ -28,15 +31,20 @@ class FCProtocol(basic.LineReceiver):
 
     def speak_proto(self,message):
         if self.state=='INI' and message[0].strip() == 'READY TO ACCEPT REQUESTS':
-            if arguments.verbose: print "Sending register request"
+            if arguments.verbose: print "[%s] Sending register request" % datetime.datetime.now()
             self.transport.write("REGISTER:\r\n")
             self.state='REG'
         elif self.state=='REG' and message[0].strip() =='REGISTERED':
-            if arguments.verbose: print "Sending job request"
+            if arguments.verbose: print "[%s] Registered, sending job request" % datetime.datetime.now()
             self.factory.ID=message[1].strip()
             self.transport.write("REQUEST JOB:%s\r\n" %self.factory.ID)
             self.state='RJOB'
-        #elif: self.state=='RJOB' and message[0] =='
+        elif self.state=='RJOB' and message[0].strip() =='JOB SEGMENT':
+            if arguments.verbose: print "[%s] Receiving job segment" % datetime.datetime.now()
+            job_segment=pickle.loads(message[1].strip())
+            print "[%s] Assigned job: %s" % (datetime.datetime.now(),job_segment)
+            self.transport.loseConnection()
+
 
 
 

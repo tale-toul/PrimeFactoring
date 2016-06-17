@@ -385,7 +385,6 @@ def factor_broker(num_to_factor,bottom,top):
                 reqres_object.job_type='RESPONSE'
                 reqres_object.num=num_to_factor
                 reqres_object.segment=remote_segment
-                print "Job request: " , reqres_object
                 job_queue.put(reqres_object)
             cond.wait() #Wait for any of the factoring process to finish
             print "Woken up at %.2f" % time.time()

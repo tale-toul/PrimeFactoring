@@ -7,6 +7,7 @@ from twisted.protocols import basic
 import datetime
 import md5
 from multiprocessing import Queue
+import pickle
 import NetJob
 
 external_port=8000
@@ -24,6 +25,7 @@ class PFServerProtocol(basic.LineReceiver):
     loops=5 #Maximun number of attempts to get the jobs from the parent, once the request
             # has been sent
     job_retreived=None #Job retreived from the jobs queue
+    lpc_fetch_jobs=None #Looping Call to look for jobs in the job queue
 
     def connectionLost(self,reason):
        print "Conection closed with %s due to %s" % (self.transport.getPeer(),reason)
@@ -70,8 +72,8 @@ class PFServerProtocol(basic.LineReceiver):
     def wait_for_job(self,clientID):
         if not self.factory.lpc_order_jobs.running: #Start the job ordering repeating function call
             self.factory.lpc_order_jobs.start(3) #This is run from the factory
-        lpc_fetch_jobs=LoopingCall(self.fetch_job,clientID)
-        fetch_deferred=lpc_fetch_jobs.start(3.5) #This is run in the protocol
+        self.lpc_fetch_jobs=LoopingCall(self.fetch_job,clientID)
+        fetch_deferred=self.lpc_fetch_jobs.start(3.5) #This is run in the protocol
         fetch_deferred.addCallbacks(self.job_found,self.job_not_found)
 
     def fetch_job(self,clientID):
@@ -84,7 +86,9 @@ class PFServerProtocol(basic.LineReceiver):
             raise Exception('Could not get job from parent')
 
     def job_found(self,result):
-        print "Job found %s" % result
+        print "Job found: %s" % self.job_retreived
+        pickled_job=pickle.dumps(self.job_retreived)
+        self.transport.write("JOB SEGMENT:%s\r\n" % pickled_job)
 
     def job_not_found(self,failure):
         print failure.getBriefTraceback()
@@ -122,8 +126,7 @@ class PFServerProtocolFactory(Factory):
         the dictionary is a list of NetJob objects '''
         while not self.job_queue.empty():
             response=self.job_queue.get()
-            print response
-            if response.woker_ID in self.ordered_jobs:
+            if response.worker_ID in self.ordered_jobs:
                 self.ordered_jobs[response.worker_ID].append(response)
             else:
                 self.ordered_jobs[response.worker_ID]=[response]
