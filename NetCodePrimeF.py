@@ -86,8 +86,7 @@ class PFServerProtocol(basic.LineReceiver):
             raise Exception('Could not get job from parent')
 
     def job_found(self,result):
-        print "Job found: %s" % self.job_retreived
-        pickled_job=pickle.dumps(self.job_retreived)
+        pickled_job=pickle.dumps(self.job_retreived,pickle.HIGHEST_PROTOCOL )
         self.transport.write("JOB SEGMENT:%s\r\n" % pickled_job)
 
     def job_not_found(self,failure):
@@ -134,11 +133,11 @@ class PFServerProtocolFactory(Factory):
 
 
 
-
 #Inter process comunications
 class IPCProtocol(basic.LineReceiver):
 
     def lineReceived(self,line):
+        print "IPCFactory- %s" % line
         self.transport.loseConnection()
         reactor.stop()
 

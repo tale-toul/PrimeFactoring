@@ -34,6 +34,7 @@ def validate_factors(num,factors):
             print "%d is not prime" % (item,)
             return False
     return True if partial_result == num else False # Ternary expression
+
 #Parameters: compnum.- An integer to factorize
 #            own_results.- list to store the factors found during the execution of the
 #                       function.  Belongs to a multiprocessing Manager so it's visible
@@ -41,7 +42,6 @@ def validate_factors(num,factors):
 #           candidate.- The first candidate to start looking for factors
 #           last_candidate.- The last candidate to try
 #           max_candidate.- The maximun value a candidate can get to look for factors
-#           loc.- multiprocessing Lock to controll access to own_results
 #           phase1.- Are we running in phase1 mode, if not leave as soon as we find a
 #Returns: The updated values of compnum and max_candidate. The own_results is also
 #         updated, but this is done in-place
@@ -363,24 +363,30 @@ def factor_broker(num_to_factor,bottom,top):
         else: daemon=None
         running_processes=list()
         cond.acquire()
-        while segments: # While segments available
+        while segments or pending_remote_segments: # While segments available
             while slots: # While slots available
-                pick_segment=random.randint(0,len(segments)-1)
-                factor_eng.append(create_process(num_to_factor,manager,cond,segments.pop(pick_segment)))
+                if segments:
+                    pick_segment=random.randint(0,len(segments)-1)
+                    working_segment=segments.pop(pick_segment)
+                else:
+                    if arguments.verbose: print "Stealing segment from pending remote client"
+                    pick_segment=random.randint(0,len(pending_remote_segments)-1)
+                    working_segment=pending_remote_segments.pop(pick_segment)
+                factor_eng.append(create_process(num_to_factor,manager,cond,working_segment))
                 running_processes.append(factor_eng[-1])
                 factor_eng[-1][1].start()
                 if arguments.verbose:
                     print "  +Starting process %s in segment %s" % (factor_eng[-1][1].name,factor_eng[-1][5])
                 slots -=1
-            while not reqres_queue.empty() and segments:
+            while not reqres_queue.empty() and segments: #Serve remote clients requests
                 reqres_object=reqres_queue.get_nowait()
                 pick_segment=random.randint(0,len(segments)-1)
                 remote_segment=segments.pop(pick_segment)
-                # The segments delegated to the remote clients are in the next list 
-                # once the results are returned they must be removed from here.
-                # If the local segments are all processed and there are some remote
-                # segments in this list, then we take them from here, don't wait for the
-                # remote clients.
+                # The segments delegated to the remote clients are in the
+                # pending_remote_segments list, once the results are returned they must be
+                # removed from there.  If the local segments are all processed and there
+                # are some remote segments in this list, then we take them from there,
+                # don't wait for the remote clients.
                 pending_remote_segments.append(remote_segment)
                 reqres_object.job_type='RESPONSE'
                 reqres_object.num=num_to_factor
@@ -402,40 +408,45 @@ def factor_broker(num_to_factor,bottom,top):
                                                                 # checking 
                             print "killing %s" % dying_process[1].name
                             dying_process[1].terminate()
-                            segments=[] #Scratch all the segments
+                            segments=pending_remote_segments=[] #Scratch all the segments
                             bottom=2
+                        finish_daemon(daemon)
+                        print "Finished"
                         temp_proc_list=[] # Empty the temp list so we end faster
                         break #No more running processes, they are all dead 
                 else: #Keep this one
                     temp_proc_list.append(proc)
                     proc[3].release()
             running_processes=temp_proc_list
-            slots = min(num_cpus - len(running_processes) , len(segments))
+            slots = min(num_cpus - len(running_processes) , max(len(segments),len(pending_remote_segments)))
         cond.release()
         for last_proc in running_processes:
             last_proc[1].join()
             print "\tProcess is finished:",last_proc[1].name,last_proc[0],last_proc[5]
         #@Signal the daemon to cancel the remote clients@#
-    if daemon and daemon.is_alive(): #Shutdown the network daemon
-        finish_daemon()
+    finish_daemon(daemon) #Shutdown the network daemon
     for r in factor_eng: #Collect the factors found in each segment
         results_dirty.append(r[0][:]) #Get the results from every process
     return clean_results(results_dirty,orig_num_to_factor)
     
-#Parameters: None
+#Parameters: daemon process reference
 #Return value: None
-def finish_daemon():
+def finish_daemon(daemon):
     '''Connects to the network "twisted" daemon and sends a shutdown request'''
-    print "Ask daemon politely to die"
-    import socket
-    s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-    s.connect(('localhost',NetCodePrimeF.internal_port))
-    s.settimeout(0.5)
-    try:
-        s.sendall("This is just a test\r\n")
-    except socket.timeout:
-        print "Socket timeout, just kill the bastard"
-        daemon.terminate()
+    if daemon and daemon.is_alive():
+        print "Closing down daemon..."
+        import socket
+        s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        s.connect(('localhost',NetCodePrimeF.internal_port))
+        s.settimeout(0.5)
+        try:
+            s.sendall("This is just a test\r\n")
+            s.close()
+        except socket.timeout:
+            print "Socket timeout, just kill the bastard"
+            daemon.terminate()
+    elif arguments.verbose:
+        print "Daemon is not alive, no need to close it"
 
 #Parameters: num_to_factor.- The number to factor
 #            manager.- a multiprocessing manager to share variables among processes
