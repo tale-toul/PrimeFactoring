@@ -57,6 +57,9 @@ class PFServerProtocol(basic.LineReceiver):
             self.transport.write("REGISTERED:%s\r\n" % reg_md5)
             print "Client registered"
 
+    #Parameters: clientID.- The md5 id assigned to the client when it previously
+    #                   registered. The protocol expects this ID to be the only component
+    #                   of the message after the colom
     def serve_request(self,clientID):
         '''Run when the "REQUEST JOB" protocol command is received from the client'''
         print "Host %s requesting factoring job" % self.peer.host
@@ -70,7 +73,7 @@ class PFServerProtocol(basic.LineReceiver):
             self.transport.loseConnection()
 
     def wait_for_job(self,clientID):
-        if not self.factory.lpc_order_jobs.running: #Start the job ordering repeating function call
+        if not self.factory.lpc_order_jobs.running: #Start the loop that orders the jobs found in the queue
             self.factory.lpc_order_jobs.start(3) #This is run from the factory
         self.lpc_fetch_jobs=LoopingCall(self.fetch_job,clientID)
         fetch_deferred=self.lpc_fetch_jobs.start(3.5) #This is run in the protocol
@@ -93,8 +96,13 @@ class PFServerProtocol(basic.LineReceiver):
         print failure.getBriefTraceback()
         self.transport.loseConnection()
 
-
-
+    def receive_results(self,pickle_job):
+        '''Receive the results from a client.  The client must be already registered and
+            the job must have been previously assigned '''
+        job_result=pickle.loads(pickle_job) #Get the NetJob back from pickle form
+        if job_result.worker_ID in self.factory.registered_clients: #Place job request in queue
+#@I should also check that the result correponds with a previous request@#
+            print "Job result received: %s" % job_result
 
 #Factory class
 class PFServerProtocolFactory(Factory): 

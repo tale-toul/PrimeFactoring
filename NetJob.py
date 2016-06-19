@@ -1,8 +1,5 @@
 class NetJob:
 
-    job_type_dict={'request': 'REQUEST',
-            'response': 'RESPONSE',
-            'result': 'RESULT'}
 
     #Parameters: worker_ID.- MD5 hash identifing the object
     #            job_type.- one of 'REQUEST' 'RESPONSE' 'RESULT'
@@ -15,21 +12,29 @@ class NetJob:
         self.num=num 
         self.segment=segment 
         self.results=results 
-
+        self.job_type_dict={'request': 'REQUEST',
+                'response': 'RESPONSE',
+                'result': 'RESULT'}
     
     def is_request(self):
         '''Is this object a request?'''
-        return self.job_type == job_type_dict['request'] 
+        return self.job_type == self.job_type_dict['request'] 
 
     def is_response(self):
         '''Is this object a response?'''
-        return  self.job_type == job_type_dict['response'] 
+        return  self.job_type == self.job_type_dict['response'] 
 
     def is_result(self):
         '''Is this object a result?'''
-        return self.job_type == job_type_dict['result'] 
+        return self.job_type == self.job_type_dict['result'] 
 
     def __repr__(self):
         my_representation="Worker_ID: %s Job_type: %s Num: %d Segment: %s Results: %s" % (self.worker_ID,self.job_type,self.num, self.segment, self.results)
         return my_representation
 
+    def add_results(self,found_results):
+        if self.is_response():
+            self.results=found_results
+            self.job_type=self.job_type_dict['result']
+        else:
+            raise Exception("Cannot add results to non response NetJob")

@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 import argparse
-from twisted.internet import reactor,protocol
+from twisted.internet import reactor,protocol,defer
 from twisted.protocols import basic
 import datetime
 import pickle
@@ -11,12 +11,13 @@ import math
 #Factor Client Protocol
 class FCProtocol(basic.LineReceiver):
 
-    def __init__(self,factory):
-        self.state='INI'
+    def __init__(self,factory,state='INI'):
+        self.state=state
         self.factory=factory
 
     def connectionMade(self):
-        if arguments.verbose: print ("Connection made")
+        if arguments.verbose: 
+            print "[%s] Connection made with %s" % (datetime.datetime.now(),self.transport.getPeer())
 
     def lineReceived(self,line):
         proto_msg=line.split(':',1)
@@ -27,8 +28,9 @@ class FCProtocol(basic.LineReceiver):
             self.transport.loseConnection()
 
     def connectionLost(self,reason):
-       print "Conection closed with %s" % (self.transport.getPeer())
-       reactor.stop()
+       print "[%s] Conection closed with %s" % (datetime.datetime.now(),self.transport.getPeer())
+       if not self.state == 'ASGJOB': #If we don't have the job assigment yet, then stop the reactor
+           reactor.stop()
 
     def speak_proto(self,message):
         if self.state=='INI' and message[0].strip() == 'READY TO ACCEPT REQUESTS':
@@ -39,14 +41,24 @@ class FCProtocol(basic.LineReceiver):
             if arguments.verbose: print "[%s] Registered, sending job request" % datetime.datetime.now()
             self.factory.clientID=message[1].strip()
             self.transport.write("REQUEST JOB:%s\r\n" %self.factory.clientID)
-            self.state='RJOB'
-        elif self.state=='RJOB' and message[0].strip() =='JOB SEGMENT':
+            self.state='REQJOB'
+        elif self.state=='REQJOB' and message[0].strip() =='JOB SEGMENT':
             if arguments.verbose: print "[%s] Receiving job segment" % datetime.datetime.now()
             #Take the first, and hopefully the only, element of the list returned by pickle
             self.factory.job_segment=pickle.loads(message[1].strip())[0]
             print "[%s] Assigned job: %s" % (datetime.datetime.now(),self.factory.job_segment)
-            self.factory.factorize_with_limits(self.factory.job_segment.num,[],self.factory.job_segment.segment[0],self.factory.job_segment.segment[1])
+            self.state='ASGJOB'
+            d=self.factory.factor(self.factory.job_segment)
+            d.addCallback(self.factory.send_results)
+            d.addErrback(self.factory.factoring_err)
             self.transport.loseConnection()
+        elif self.state =='ASGJOB' and message[0].strip() == 'READY TO ACCEPT REQUESTS':
+            self.transport.write("SEND RESULTS:%s\r\n" % pickle.dumps(self.factory.job_segment,pickle.HIGHEST_PROTOCOL ))
+            print "[%s] Results sent" % datetime.datetime.now()
+#@Maybe a deferred here again to wait for the server to acknowledge, and then stop the reactor
+            #reactor.stop()
+        else:
+            print "Bad protocol, current state: %s message received: %s" % (self.state,message[0])
 
 
 
@@ -62,7 +74,7 @@ class FCFactory(protocol.ClientFactory):
     job_segment=None
 
     def buildProtocol(self,addr):
-        return FCProtocol(self)
+        return FCProtocol(self,state='ASGJOB') if self.clientID is not None and self.job_segment.results is not None else FCProtocol(self)
 
     def clientConnectionFailed(self,connector,reason):
         Address=connector.getDestination()
@@ -70,13 +82,11 @@ class FCFactory(protocol.ClientFactory):
         reactor.stop()
 
     #Parameters: compnum.- An integer to factorize
-    #           own_results.- list to store the factors found during the execution of the
-    #             function.  Belongs to a multiprocessing Manager so it's visible outside the
-    #             process
+    #           gerbasio.- A deferred object to call when finished
     #           candidate.- The first candidate to start looking for factors
     #           last_candidate.- The last candidate to try
     #Return:  The list of factors found, with duplacates
-    def factorize_with_limits(self,compnum,own_results,candidate=2,last_candidate=2):
+    def factorize_with_limits(self,compnum,gerbasio,candidate=2,last_candidate=2):
         '''Multiprocess function used to factor a number, it will look for factors inside
         a defined segment, between an initial and a final possible candidates.'''
 
@@ -93,6 +103,7 @@ class FCFactory(protocol.ClientFactory):
                               8:('9',[2,2,4,2]),
                               9:('9',[2,2,4,2])}
 
+        own_results=list() #List to store the factors found in this segment
         max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
     #Place the candidate in the correct position; if the candidate ends in 7, 9, 1 or 3 do nothing
         if candidate > 5:
@@ -130,6 +141,7 @@ class FCFactory(protocol.ClientFactory):
             candidate += increment[3] #This increment depends on the incremnet list selected bejore
         if compnum != 1: own_results.append(compnum)
         print "[%s] factors of %d: %s" % (datetime.datetime.now(), compnum,own_results)
+        gerbasio.callback(own_results)
 
     #Parameters: compnum.- An integer to factorize
     #            own_results.- list to store the factors found during the execution of the function.
@@ -147,7 +159,23 @@ class FCFactory(protocol.ClientFactory):
         max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
         return (compnum,max_candidate)
 
+    
+    #Parameters:  The job segment to solve
+    def factor(self,job_segment):
+        '''Waits a moment before launching the factoring function, so the connection can be
+        cleanly closed '''
+        d=defer.Deferred()
+        reactor.callLater(1,self.factorize_with_limits,job_segment.num,d,job_segment.segment[0],job_segment.segment[1])
+        return d
 
+    def send_results(self,own_results):
+        self.job_segment.add_results(own_results)
+        if arguments.verbose: print "[%s] Sending job results: %s" % (datetime.datetime.now(),self.job_segment)
+        reactor.connectTCP(arguments.host,arguments.port,self)
+
+    def factoring_err(self,err):
+        err.printBriefTraceback()
+        reactor.stop()
 
 
 #Parameters: none
