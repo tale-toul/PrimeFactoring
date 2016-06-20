@@ -65,7 +65,7 @@ class PFServerProtocol(basic.LineReceiver):
         print "Host %s requesting factoring job" % self.peer.host
         if clientID in self.factory.registered_clients: #Place job request in queue
             request=NetJob.NetJob(clientID,'REQUEST')
-            self.factory.reqres_queue.put(request)
+            self.factory.request_queue.put(request)
             print "Request sent to parent, waiting for response"
             self.wait_for_job(clientID)
         else:
@@ -102,7 +102,8 @@ class PFServerProtocol(basic.LineReceiver):
         job_result=pickle.loads(pickle_job) #Get the NetJob back from pickle form
         if job_result.worker_ID in self.factory.registered_clients: #Place job request in queue
 #@I should also check that the result correponds with a previous request@#
-            print "Job result received: %s" % job_result
+            self.factory.result_queue.put(job_result)
+            self.transport.write("RESULT ACK:\r\n")
 
 #Factory class
 class PFServerProtocolFactory(Factory): 
@@ -115,8 +116,9 @@ class PFServerProtocolFactory(Factory):
     #Dictionary of jobs returned by the parent process
     ordered_jobs=dict()
 
-    def __init__(self,reqres_queue,job_queue):
-        self.reqres_queue=reqres_queue
+    def __init__(self,request_queue,result_queue,job_queue):
+        self.request_queue=request_queue
+        self.result_queue=result_queue
         self.job_queue=job_queue
         #Looping call to order jobs from the job queue 
         self.lpc_order_jobs=LoopingCall(self.order_job)
@@ -156,14 +158,14 @@ class IPCFactory(Factory):
     def __init__(self):
         pass
 
-def server_netcode(reqres_queue,job_queue):
+def server_netcode(request_queue,result_queue,job_queue):
 
     print "Starting server in port %d" % external_port
-    reactor.listenTCP(external_port,PFServerProtocolFactory(reqres_queue,job_queue))
+    reactor.listenTCP(external_port,PFServerProtocolFactory(request_queue,result_queue,job_queue))
     print "Starting server in port %d and interface localhost" % internal_port
     reactor.listenTCP(internal_port,IPCFactory(),interface='localhost')
     reactor.run()
 
 if __name__ == "__main__":
-    server_netcode(Queue(),Queue())
+    server_netcode(Queue(),Queue(),Queue())
 

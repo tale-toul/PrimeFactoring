@@ -114,30 +114,30 @@ class FCFactory(protocol.ClientFactory):
         #signal.signal(signal.SIGUSR1,signal_show_current_status) #Sets the handler for the signal SIGUSR1
         if candidate == 2: #This condition is here because the initial value of candidate may be different from 2
             while compnum%candidate == 0:  #Candidate = 2, consider it as a special case
-                compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate)
+                compnum,max_candidate=self.update_resnum(compnum,own_results,candidate,last_candidate,max_candidate)
             candidate += 1 #Now candidate equals 3
         if candidate == 3: #This condition is here because the initial value of candidate may be different from 2
             while compnum%candidate == 0:
-                compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate)
+                compnum,max_candidate=self.update_resnum(compnum,own_results,candidate,last_candidate,max_candidate)
             candidate += 2 #Now candidate equals 5
         if candidate == 4: candidate = 5 #Upgrade to the next meaninful candidate
         if candidate == 5: #This condition is here because the initial value of candidate may be different from 2
             while compnum%candidate == 0:
-                compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate)
+                compnum,max_candidate=self.update_resnum(compnum,own_results,candidate,last_candidate,max_candidate)
             candidate += 2 #Now candidate equals 7
     #----MAIN LOOP----
         while candidate <= max_candidate:
             while compnum%candidate == 0:
-                compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate)
+                compnum,max_candidate=self.update_resnum(compnum,own_results,candidate,last_candidate,max_candidate)
             candidate += increment[0] #This increment depends on the incremnet list selected bejore
             while compnum%candidate == 0:
-                compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate)
+                compnum,max_candidate=self.update_resnum(compnum,own_results,candidate,last_candidate,max_candidate)
             candidate += increment[1] #This increment depends on the incremnet list selected bejore
             while compnum%candidate == 0:
-                compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate)
+                compnum,max_candidate=self.update_resnum(compnum,own_results,candidate,last_candidate,max_candidate)
             candidate += increment[2] #This increment depends on the incremnet list selected bejore
             while compnum%candidate == 0:
-                compnum,max_candidate=update_resnum(compnum,own_results,candidate,last_candidate,max_candidate)
+                compnum,max_candidate=self.update_resnum(compnum,own_results,candidate,last_candidate,max_candidate)
             candidate += increment[3] #This increment depends on the incremnet list selected bejore
         if compnum != 1: own_results.append(compnum)
         print "[%s] factors of %d: %s" % (datetime.datetime.now(), compnum,own_results)

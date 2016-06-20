@@ -297,7 +297,8 @@ def factor_broker(num_to_factor,bottom,top):
     #       middle of being relaunched, is ready for termination
     #[5].-segment.- the candidate space for this process
     #@The following variables should be moved to a configuration file@#
-    reqres_queue=Queue() #Receive requests and results from network clients
+    request_queue=Queue() #Receive requests from network clients
+    result_queue=Queue() # Receive results from network clients
     job_queue=Queue() #Send jobs and notifications to network clients
     phase1_time=10 #Time to run to get speed of candidate test in this machine
     max_segments=100 #Maximun number of limits
@@ -358,7 +359,7 @@ def factor_broker(num_to_factor,bottom,top):
         print "Remaining time %d" % remaining_time
         if remaining_time > thres_time_daemon: 
             if arguments.verbose: print "Daemonize"
-            daemon=Process(target=NetCodePrimeF.server_netcode,args=(reqres_queue,job_queue))
+            daemon=Process(target=NetCodePrimeF.server_netcode,args=(request_queue,result_queue,job_queue))
             daemon.start()
         else: daemon=None
         running_processes=list()
@@ -378,20 +379,26 @@ def factor_broker(num_to_factor,bottom,top):
                 if arguments.verbose:
                     print "  +Starting process %s in segment %s" % (factor_eng[-1][1].name,factor_eng[-1][5])
                 slots -=1
-            while not reqres_queue.empty() and segments: #Serve remote clients requests
-                reqres_object=reqres_queue.get_nowait()
+            while not request_queue.empty() and segments: #Serve remote clients requests
+                reqres_object=request_queue.get_nowait()
                 pick_segment=random.randint(0,len(segments)-1)
                 remote_segment=segments.pop(pick_segment)
                 # The segments delegated to the remote clients are in the
                 # pending_remote_segments list, once the results are returned they must be
-                # removed from there.  If the local segments are all processed and there
-                # are some remote segments in this list, then we take them from there,
-                # don't wait for the remote clients.
+                # removed from there.  
                 pending_remote_segments.append(remote_segment)
                 reqres_object.job_type='RESPONSE'
                 reqres_object.num=num_to_factor
                 reqres_object.segment=remote_segment
                 job_queue.put(reqres_object)
+            while not result_queue.empty(): #We got results from the clients
+                result_job=result_queue.get_nowait()
+                if result_job.is_result() and result_job.results and result_job.segment in pending_remote_segments:
+                    if arguments.verbose: print "Job result received in parent: %s " % result_job
+                    factor_eng.append([result_job.results])
+                    pending_remote_segments.remove(result_job.segment)
+                else:
+                    print "Some problem with Job result in parent: %s" % result_job
             cond.wait() #Wait for any of the factoring process to finish
             print "Woken up at %.2f" % time.time()
             temp_proc_list=list()

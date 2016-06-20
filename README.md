@@ -1822,7 +1822,7 @@ conectados a través de la red.
   (Queue)
 
 #### FactorClient
-**Version 1.0.0
+**Version 1.0.0**
 
 Para poder distribuir el trabajo de factorización entre distintos equipos en red
 necesitamos un cliente que sea capaz de conectarse al servidor, solicitar parte del
@@ -1842,4 +1842,7 @@ El cliente no soportará opciones como:
 + Segmento dentro del cual buscar los factores; lo recibirá del servidor
 + Generar casos de prueba
 + Ejecutar casos de prueba
+
+### DISTRIBUCION DE LA APLICACION
+_Referencia https://python-packaging-user-guide.readthedocs.io/en/latest/_
 
