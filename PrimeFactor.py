@@ -447,7 +447,7 @@ def finish_daemon(daemon):
         s.connect(('localhost',NetCodePrimeF.internal_port))
         s.settimeout(0.5)
         try:
-            s.sendall("This is just a test\r\n")
+            s.sendall("STOP REACTOR:\r\n")
             s.close()
         except socket.timeout:
             print "Socket timeout, just kill the bastard"

@@ -54,7 +54,7 @@ class FCProtocol(basic.LineReceiver):
             self.transport.loseConnection()
         elif self.state =='ASGJOB' and message[0].strip() == 'READY TO ACCEPT REQUESTS':
             self.transport.write("SEND RESULTS:%s\r\n" % pickle.dumps(self.factory.job_segment,pickle.HIGHEST_PROTOCOL ))
-            print "[%s] Results sent" % datetime.datetime.now()
+            print "[%s] Results sent, waiting for ACK" % datetime.datetime.now()
 #@Maybe a deferred here again to wait for the server to acknowledge, and then stop the reactor
             #reactor.stop()
         else:

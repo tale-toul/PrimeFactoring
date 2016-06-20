@@ -19,7 +19,9 @@ class PFServerProtocol(basic.LineReceiver):
 
     messages={'REGISTER': 'register',
               'REQUEST JOB': 'serve_request',
-              'SEND RESULTS': 'receive_results'}
+              'SEND RESULTS': 'receive_results',
+              'STOP REACTOR': 'stop_reactor',
+              'ACK RESULTS': 'ack_results'}
 
     peer=None #Address object
     loops=5 #Maximun number of attempts to get the jobs from the parent, once the request
@@ -36,12 +38,13 @@ class PFServerProtocol(basic.LineReceiver):
         self.sendLine("READY TO ACCEPT REQUESTS:")
 
     def lineReceived(self,line):
-        print "line received:\n%s" %line
+        print "line received: %s" %line
         proto_msg=line.split(':',1)
         if len(proto_msg) == 2:
             next_step_proto=self.messages.get(proto_msg[0].strip(),'unknown_message')
             getattr(self,next_step_proto)(proto_msg[1].strip())
         else:
+            print "Unkknow message %s" % line
             self.unknown_message(line)
             self.transport.loseConnection()
 
@@ -99,11 +102,21 @@ class PFServerProtocol(basic.LineReceiver):
     def receive_results(self,pickle_job):
         '''Receive the results from a client.  The client must be already registered and
             the job must have been previously assigned '''
-        job_result=pickle.loads(pickle_job) #Get the NetJob back from pickle form
-        if job_result.worker_ID in self.factory.registered_clients: #Place job request in queue
+        self.job_result=pickle.loads(pickle_job) #Get the NetJob back from pickle form
+        if self.job_result.worker_ID in self.factory.registered_clients: #Place job request in queue
 #@I should also check that the result correponds with a previous request@#
-            self.factory.result_queue.put(job_result)
-            self.transport.write("RESULT ACK:\r\n")
+            self.factory.result_queue.put(self.job_result)
+
+
+#ONLY ACCEPTED WHEN COMMING FROM LOCALHOST
+    def stop_reactor(self,message):
+        '''Stop the reactor when asked by the parent, or any other local process for that
+        matter'''
+        if self.transport.getPeer().host == '127.0.0.1':
+            reactor.stop()
+        else:
+            print self.transport.getPeer()
+
 
 #Factory class
 class PFServerProtocolFactory(Factory): 
@@ -143,27 +156,13 @@ class PFServerProtocolFactory(Factory):
 
 
 
-#Inter process comunications
-class IPCProtocol(basic.LineReceiver):
-
-    def lineReceived(self,line):
-        print "IPCFactory- %s" % line
-        self.transport.loseConnection()
-        reactor.stop()
-
-class IPCFactory(Factory):
-
-    protocol=IPCProtocol
-
-    def __init__(self):
-        pass
-
 def server_netcode(request_queue,result_queue,job_queue):
 
+    factory=PFServerProtocolFactory(request_queue,result_queue,job_queue)
     print "Starting server in port %d" % external_port
-    reactor.listenTCP(external_port,PFServerProtocolFactory(request_queue,result_queue,job_queue))
+    reactor.listenTCP(external_port,factory)
     print "Starting server in port %d and interface localhost" % internal_port
-    reactor.listenTCP(internal_port,IPCFactory(),interface='localhost')
+    reactor.listenTCP(internal_port,factory,interface='localhost')
     reactor.run()
 
 if __name__ == "__main__":
