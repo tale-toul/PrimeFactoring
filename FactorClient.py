@@ -17,7 +17,7 @@ class FCProtocol(basic.LineReceiver):
 
     def connectionMade(self):
         if arguments.verbose: 
-            print "[%s] Connection made with %s" % (datetime.datetime.now(),self.transport.getPeer())
+            print "[%s] Connection made with %s:%s" % (tstamp(),self.transport.getPeer().host,self.transport.getPeer().port)
 
     def lineReceived(self,line):
         proto_msg=line.split(':',1)
@@ -28,43 +28,50 @@ class FCProtocol(basic.LineReceiver):
             self.transport.loseConnection()
 
     def connectionLost(self,reason):
-        print "[%s] Conection closed with %s:%s" % (datetime.datetime.now(),self.transport.getPeer().host,self.transport.getPeer().port)
-        if not self.state == 'ASGJOB' and not self.state == 'ACKRECV': #If we don't have the job assigment yet, then stop the reactor
+        print "[%s] Conection closed with %s:%s" % (tstamp(),self.transport.getPeer().host,self.transport.getPeer().port)
+        if not self.state in ['ASGJOB','ACKRECV','TIMEOUT']: #If we don't have the job assigment yet, then stop the reactor
             print "Stoping reactor"
             reactor.stop()
 
     def speak_proto(self,message):
         if self.state=='INI' and message[0].strip() == 'READY TO ACCEPT REQUESTS':
-            if arguments.verbose: print "[%s] Sending register request" % datetime.datetime.now()
+            if arguments.verbose: print "[%s] Sending register request" % tstamp()
             self.transport.write("REGISTER:\r\n")
             self.state='REG'
         elif self.state=='REG' and message[0].strip() =='REGISTERED':
-            if arguments.verbose: print "[%s] Registered, sending job request" % datetime.datetime.now()
+            if arguments.verbose: print "[%s] Registered, sending job request" % tstamp()
             self.factory.clientID=message[1].strip()
             self.transport.write("REQUEST JOB:%s\r\n" %self.factory.clientID)
             self.state='REQJOB'
-        elif self.state=='REQJOB' and message[0].strip() =='JOB SEGMENT':
-            if arguments.verbose: print "[%s] Receiving job segment" % datetime.datetime.now()
-            #Take the first, and hopefully the only, element of the list returned by pickle
-            self.factory.job_segment=pickle.loads(message[1].strip())[0]
-            if self.factory.job_segment.is_response():
-                print "[%s] Assigned job: %s" % (datetime.datetime.now(),self.factory.job_segment)
-                self.state='ASGJOB'
-                d=self.factory.factor(self.factory.job_segment)
-                d.addCallback(self.factory.send_results)
-                d.addErrback(self.factory.factoring_err)
-                self.transport.loseConnection()
-            else:
+        elif self.state=='REQJOB':
+            if message[0].strip() =='JOB SEGMENT':
+                self.factory.job_segment=pickle.loads(message[1].strip())[0]
+                if self.factory.job_segment.is_response():
+                    if arguments.verbose: print "[%s] Receiving job segment: %s" % (tstamp(),self.factory.job_segment)
+                    self.state='ASGJOB'
+                    d=self.factory.factor(self.factory.job_segment)
+                    d.addCallback(self.factory.send_results)
+                    d.addErrback(self.factory.factoring_err)
+                    self.transport.loseConnection()
+                else:
+                    print "[%s] Expecting a RESPONSE object, got: %s" % self.factory.job_segment
+                    reactor.stop()
+            elif message[0].strip() == 'REQUEST TIMEOUT':
+                print "[%s] %s" % (tstamp(),message[1].strip())
+                self.state='TIMEOUT'
+                self.factory.new_connection()
+                self.factory.loseConnection()
+            else: #@Repeated code
                 print "[%s] Expecting a RESPONSE object, got: %s" % self.factory.job_segment
                 reactor.stop()
         elif self.state =='ASGJOB' and message[0].strip() == 'READY TO ACCEPT REQUESTS':
             self.transport.write("SEND RESULTS:%s\r\n" % pickle.dumps(self.factory.job_segment,pickle.HIGHEST_PROTOCOL ))
             self.state='WAITACK'
-            print "[%s] Results sent, waiting for ACK" % datetime.datetime.now()
+            print "[%s] Results sent, waiting for ACK" % tstamp()
         elif self.state == 'WAITACK' and message[0].strip() == 'JOB SEGMENT':
             ack_job_segment=pickle.loads(message[1].strip())[0]
             if ack_job_segment.is_ack() and ack_job_segment.worker_ID == self.factory.job_segment.worker_ID:
-                print "[%s] ACK received: %s" % (datetime.datetime.now(),ack_job_segment)
+                print "[%s] ACK received: %s" % (tstamp(),ack_job_segment)
                 self.state='ACKRECV' 
                 self.factory.new_connection()
                 self.transport.loseConnection()
@@ -154,7 +161,7 @@ class FCFactory(protocol.ClientFactory):
                 compnum,max_candidate=self.update_resnum(compnum,own_results,candidate,last_candidate,max_candidate)
             candidate += increment[3] #This increment depends on the incremnet list selected bejore
         if compnum != 1: own_results.append(compnum)
-        print "[%s] factors of %d: %s" % (datetime.datetime.now(), compnum,own_results)
+        print "[%s] factors found: %s" % (tstamp(),own_results)
         gerbasio.callback(own_results)
 
     #Parameters: compnum.- An integer to factorize
@@ -187,7 +194,7 @@ class FCFactory(protocol.ClientFactory):
         with the server, what triggers the sending of the result based on the state of
         the protocol '''
         self.job_segment.add_results(own_results)
-        if arguments.verbose: print "[%s] Sending job results: %s" % (datetime.datetime.now(),self.job_segment)
+        if arguments.verbose: print "[%s] Sending job results: %s" % (tstamp(),self.job_segment)
         reactor.connectTCP(arguments.host,arguments.port,self)
 
     def factoring_err(self,err):
@@ -209,6 +216,9 @@ def parse_arguments():
     parser.add_argument("port", help="Server port to connect to", type=int)
     return parser.parse_args()
 
+def tstamp():
+    ts=datetime.datetime.now()
+    return "%s:%s:%s" % (ts.hour,ts.minute,ts.second)
 
 def main():
     reactor.connectTCP(arguments.host,arguments.port,FCFactory())

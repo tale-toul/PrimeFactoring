@@ -92,14 +92,16 @@ class PFServerProtocol(basic.LineReceiver):
                 self.lpc_fetch_jobs.stop()
         else:#If we didn't find a suitable job within time, call Errback
             self.loops=5 #@I don't like using this constant here@#
-            raise Exception('Could not get job from parent')
+            raise Exception('Could not get job from parent, timeout')
 
     def job_found(self,result):
         pickled_job=pickle.dumps(self.job_retreived,pickle.HIGHEST_PROTOCOL )
         self.transport.write("JOB SEGMENT:%s\r\n" % pickled_job)
 
     def job_not_found(self,failure):
-        print failure.getBriefTraceback()
+        fmsg=failure.getErrorMessage()
+        print fmsg
+        self.transport.write("REQUEST TIMEOUT:fmsg\r\n")
         self.transport.loseConnection()
 
     def receive_results(self,pickle_job):
@@ -160,13 +162,22 @@ class PFServerProtocolFactory(Factory):
 
 
 
-
+#Parameters: request_queue.- Multiprocessing Queue used by this module to place NetJob
+#               objects representing job requests for the parent process. It's shared with
+#               the parent process.
+#            result_queue.- Multiprocessing Queue used by this module to place the NetJob
+#            objects representing job results for the parent process.  It's share with the
+#            parent process
+#            job_queue.- Multiprocessing Queue used by the parent process to place the
+#            jobs assigned to network clients. This process reads from it and delivers the
+#            jobs to the clients
 def server_netcode(request_queue,result_queue,job_queue):
-
+    '''this is the main function in this package, starts the twisted reactor, opens the
+    sockets to listen to incoming connections, serves requests, etc.'''
     factory=PFServerProtocolFactory(request_queue,result_queue,job_queue)
-    print "Starting server in port %d" % external_port
+    print "[%s] Starting server in port %d" % (datetime.datetime.now(),external_port)
     reactor.listenTCP(external_port,factory)
-    print "Starting server in port %d and interface localhost" % internal_port
+    print "[%s] Starting server in port %d and interface localhost" % (datetime.datetime.now(),internal_port)
     reactor.listenTCP(internal_port,factory,interface='localhost')
     reactor.run()
 
