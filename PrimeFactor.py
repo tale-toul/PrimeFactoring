@@ -397,6 +397,8 @@ def factor_broker(num_to_factor,bottom,top):
                     if arguments.verbose: print "Job result received in parent: %s " % result_job
                     factor_eng.append([result_job.results])
                     pending_remote_segments.remove(result_job.segment)
+                    result_job.job_type='ACK'
+                    job_queue.put(result_job)
                 else:
                     print "Some problem with Job result in parent: %s" % result_job
             cond.wait() #Wait for any of the factoring process to finish

@@ -28,9 +28,10 @@ class FCProtocol(basic.LineReceiver):
             self.transport.loseConnection()
 
     def connectionLost(self,reason):
-       print "[%s] Conection closed with %s" % (datetime.datetime.now(),self.transport.getPeer())
-       if not self.state == 'ASGJOB': #If we don't have the job assigment yet, then stop the reactor
-           reactor.stop()
+        print "[%s] Conection closed with %s:%s" % (datetime.datetime.now(),self.transport.getPeer().host,self.transport.getPeer().port)
+        if not self.state == 'ASGJOB' and not self.state == 'ACKRECV': #If we don't have the job assigment yet, then stop the reactor
+            print "Stoping reactor"
+            reactor.stop()
 
     def speak_proto(self,message):
         if self.state=='INI' and message[0].strip() == 'READY TO ACCEPT REQUESTS':
@@ -46,17 +47,30 @@ class FCProtocol(basic.LineReceiver):
             if arguments.verbose: print "[%s] Receiving job segment" % datetime.datetime.now()
             #Take the first, and hopefully the only, element of the list returned by pickle
             self.factory.job_segment=pickle.loads(message[1].strip())[0]
-            print "[%s] Assigned job: %s" % (datetime.datetime.now(),self.factory.job_segment)
-            self.state='ASGJOB'
-            d=self.factory.factor(self.factory.job_segment)
-            d.addCallback(self.factory.send_results)
-            d.addErrback(self.factory.factoring_err)
-            self.transport.loseConnection()
+            if self.factory.job_segment.is_response():
+                print "[%s] Assigned job: %s" % (datetime.datetime.now(),self.factory.job_segment)
+                self.state='ASGJOB'
+                d=self.factory.factor(self.factory.job_segment)
+                d.addCallback(self.factory.send_results)
+                d.addErrback(self.factory.factoring_err)
+                self.transport.loseConnection()
+            else:
+                print "[%s] Expecting a RESPONSE object, got: %s" % self.factory.job_segment
+                reactor.stop()
         elif self.state =='ASGJOB' and message[0].strip() == 'READY TO ACCEPT REQUESTS':
             self.transport.write("SEND RESULTS:%s\r\n" % pickle.dumps(self.factory.job_segment,pickle.HIGHEST_PROTOCOL ))
+            self.state='WAITACK'
             print "[%s] Results sent, waiting for ACK" % datetime.datetime.now()
-#@Maybe a deferred here again to wait for the server to acknowledge, and then stop the reactor
-            #reactor.stop()
+        elif self.state == 'WAITACK' and message[0].strip() == 'JOB SEGMENT':
+            ack_job_segment=pickle.loads(message[1].strip())[0]
+            if ack_job_segment.is_ack() and ack_job_segment.worker_ID == self.factory.job_segment.worker_ID:
+                print "[%s] ACK received: %s" % (datetime.datetime.now(),ack_job_segment)
+                self.state='ACKRECV' 
+                self.factory.new_connection()
+                self.transport.loseConnection()
+            else:
+                print "[%s] Expecting an ACK object, got: %s" % ack_job_segment
+                reactor.stop()
         else:
             print "Bad protocol, current state: %s message received: %s" % (self.state,message[0])
 
@@ -169,6 +183,9 @@ class FCFactory(protocol.ClientFactory):
         return d
 
     def send_results(self,own_results):
+        '''Adds the results from factoring to the NetJob object, then opens a connection
+        with the server, what triggers the sending of the result based on the state of
+        the protocol '''
         self.job_segment.add_results(own_results)
         if arguments.verbose: print "[%s] Sending job results: %s" % (datetime.datetime.now(),self.job_segment)
         reactor.connectTCP(arguments.host,arguments.port,self)
@@ -177,6 +194,10 @@ class FCFactory(protocol.ClientFactory):
         err.printBriefTraceback()
         reactor.stop()
 
+    def new_connection(self):
+        self.clientID=None
+        self.job_segment=None
+        reactor.connectTCP(arguments.host,arguments.port,self)
 
 #Parameters: none
 #Return value: the arguments found in the command line

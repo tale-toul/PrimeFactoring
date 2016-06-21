@@ -14,7 +14,8 @@ class NetJob:
         self.results=results 
         self.job_type_dict={'request': 'REQUEST',
                 'response': 'RESPONSE',
-                'result': 'RESULT'}
+                'result': 'RESULT',
+                'ack': 'ACK'}
     
     def is_request(self):
         '''Is this object a request?'''
@@ -27,6 +28,10 @@ class NetJob:
     def is_result(self):
         '''Is this object a result?'''
         return self.job_type == self.job_type_dict['result'] 
+
+    def is_ack(self):
+        '''Is this object an ACK'''
+        return self.job_type == self.job_type_dict['ack']
 
     def __repr__(self):
         my_representation="Worker_ID: %s Job_type: %s Num: %d Segment: %s Results: %s" % (self.worker_ID,self.job_type,self.num, self.segment, self.results)

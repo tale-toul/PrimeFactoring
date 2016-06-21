@@ -17,11 +17,11 @@ internal_port=8010
 #Protocol class
 class PFServerProtocol(basic.LineReceiver): 
 
+    #Messages accepted by this network server
     messages={'REGISTER': 'register',
               'REQUEST JOB': 'serve_request',
               'SEND RESULTS': 'receive_results',
-              'STOP REACTOR': 'stop_reactor',
-              'ACK RESULTS': 'ack_results'}
+              'STOP REACTOR': 'stop_reactor'}
 
     peer=None #Address object
     loops=5 #Maximun number of attempts to get the jobs from the parent, once the request
@@ -76,6 +76,8 @@ class PFServerProtocol(basic.LineReceiver):
             self.transport.loseConnection()
 
     def wait_for_job(self,clientID):
+        '''Start the looping call to the function that collects the jobs delivered by the
+        parent process.  Starts and tries to get the job for the current net client'''
         if not self.factory.lpc_order_jobs.running: #Start the loop that orders the jobs found in the queue
             self.factory.lpc_order_jobs.start(3) #This is run from the factory
         self.lpc_fetch_jobs=LoopingCall(self.fetch_job,clientID)
@@ -89,6 +91,7 @@ class PFServerProtocol(basic.LineReceiver):
             if self.job_retreived:
                 self.lpc_fetch_jobs.stop()
         else:#If we didn't find a suitable job within time, call Errback
+            self.loops=5 #@I don't like using this constant here@#
             raise Exception('Could not get job from parent')
 
     def job_found(self,result):
@@ -106,6 +109,8 @@ class PFServerProtocol(basic.LineReceiver):
         if self.job_result.worker_ID in self.factory.registered_clients: #Place job request in queue
 #@I should also check that the result correponds with a previous request@#
             self.factory.result_queue.put(self.job_result)
+            print "Results sent to parent, waiting for ACK"
+            self.wait_for_job(self.job_result.worker_ID)
 
 
 #ONLY ACCEPTED WHEN COMMING FROM LOCALHOST

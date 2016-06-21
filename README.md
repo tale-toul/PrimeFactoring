@@ -1844,5 +1844,5 @@ El cliente no soportará opciones como:
 + Ejecutar casos de prueba
 
 ### DISTRIBUCION DE LA APLICACION
-_Referencia https://python-packaging-user-guide.readthedocs.io/en/latest/_
+[Referencia](https://python-packaging-user-guide.readthedocs.io/en/latest/)
 
