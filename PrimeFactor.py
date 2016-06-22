@@ -401,7 +401,7 @@ def factor_broker(num_to_factor,bottom,top):
                     result_job.job_type='ACK'
                     job_queue.put(result_job)
                 else:
-                    print "Some problem with Job result in parent: %s" % result_job
+                    print "Some problem with Job result in parent, discarding: %s" % result_job
             cond.wait() #Wait for any of the factoring process to finish
             print "Woken up at %.2f" % time.time()
             temp_proc_list=list()

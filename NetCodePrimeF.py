@@ -5,7 +5,6 @@ from twisted.internet.protocol import Protocol,Factory
 from twisted.internet.task import LoopingCall
 from twisted.protocols import basic
 import datetime
-import md5
 from multiprocessing import Queue
 import pickle
 import NetJob
@@ -51,12 +50,10 @@ class PFServerProtocol(basic.LineReceiver):
         self.transport.write("UNKNOWN REQUEST: %s\r\n" % message)
         self.transport.loseConnection()
 
-    def register(self,message):
-        reg_time=datetime.datetime.now()
-        reg_md5=md5.new(str(self.peer.host) + str(reg_time)).hexdigest()
-        print "Registering client from: %s at %s with MD5: %s" % (self.peer.host,reg_time,reg_md5)
-        if self.factory.reg_client(self.peer.host,reg_md5,reg_time):
-            self.transport.write("REGISTERED:%s\r\n" % reg_md5)
+    def register(self,clientID):
+        print "Registering client from: %s:%s with MD5: %s" % (self.peer.host,self.peer.port,clientID)
+        if self.factory.reg_client(self.peer.host,clientID):
+            self.transport.write("REGISTERED:\r\n")
             print "Client registered"
 
     #Parameters: clientID.- The md5 id assigned to the client when it previously
@@ -101,8 +98,7 @@ class PFServerProtocol(basic.LineReceiver):
     def job_not_found(self,failure):
         fmsg=failure.getErrorMessage()
         print fmsg
-        self.transport.write("REQUEST TIMEOUT:fmsg\r\n")
-        self.transport.loseConnection()
+        self.transport.write("REQUEST TIMEOUT:%s\r\n" % fmsg)
 
     def receive_results(self,pickle_job):
         '''Receive the results from a client.  The client must be already registered and
@@ -143,10 +139,10 @@ class PFServerProtocolFactory(Factory):
         #Looping call to order jobs from the job queue 
         self.lpc_order_jobs=LoopingCall(self.order_job)
 
-    def reg_client(self,host,MD5,timestamp):
+    def reg_client(self,host,clientID):
         '''Keeps a record of registered clients'''
-        if not MD5 in self.registered_clients:
-            self.registered_clients[MD5]={'HOST': host, 'REG_TIME': timestamp}
+        if not clientID in self.registered_clients:
+            self.registered_clients[clientID]= host
             return True
 
     def order_job(self):
