@@ -384,12 +384,13 @@ def factor_broker(num_to_factor,bottom,top):
                 pick_segment=random.randint(0,len(segments)-1)
                 remote_segment=segments.pop(pick_segment)
                 # The segments delegated to the remote clients are in the
-                # pending_remote_segments list, once the results are returned they must be
-                # removed from there.  
+                # pending_remote_segments list, once the results are returned they must
+                # be removed from there.  
                 pending_remote_segments.append(remote_segment)
                 reqres_object.job_type='RESPONSE'
                 reqres_object.num=num_to_factor
                 reqres_object.segment=remote_segment
+                if arguments.verbose: print "Serving client request: %s" % reqres_object
                 job_queue.put(reqres_object)
             while not result_queue.empty(): #We got results from the clients
                 result_job=result_queue.get_nowait()

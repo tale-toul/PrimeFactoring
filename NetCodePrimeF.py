@@ -30,7 +30,7 @@ class PFServerProtocol(basic.LineReceiver):
     lpc_fetch_jobs=None #Looping Call to look for jobs in the job queue
 
     def connectionLost(self,reason):
-       print "Conection closed with %s due to %s" % (self.transport.getPeer(),reason)
+        print "Conection closed with %s with message: %s" % (self.transport.getPeer().host,reason.getErrorMessage())
 
     def connectionMade(self):
         self.peer=self.transport.getPeer()
@@ -38,7 +38,6 @@ class PFServerProtocol(basic.LineReceiver):
         self.sendLine("READY TO ACCEPT REQUESTS:")
 
     def lineReceived(self,line):
-        print "line received: %s" %line
         proto_msg=line.split(':',1)
         if len(proto_msg) == 2:
             next_step_proto=self.messages.get(proto_msg[0].strip(),'unknown_message')
@@ -55,7 +54,7 @@ class PFServerProtocol(basic.LineReceiver):
     def register(self,message):
         reg_time=datetime.datetime.now()
         reg_md5=md5.new(str(self.peer.host) + str(reg_time)).hexdigest()
-        print "Register client from : %s at %s with md5 %s" % (self.peer.host,reg_time,reg_md5)
+        print "Registering client from: %s at %s with MD5: %s" % (self.peer.host,reg_time,reg_md5)
         if self.factory.reg_client(self.peer.host,reg_md5,reg_time):
             self.transport.write("REGISTERED:%s\r\n" % reg_md5)
             print "Client registered"
@@ -65,7 +64,7 @@ class PFServerProtocol(basic.LineReceiver):
     #                   of the message after the colom
     def serve_request(self,clientID):
         '''Run when the "REQUEST JOB" protocol command is received from the client'''
-        print "Host %s requesting factoring job" % self.peer.host
+        print "Host %s (%s) requesting job" % (self.peer.host,clientID)
         if clientID in self.factory.registered_clients: #Place job request in queue
             request=NetJob.NetJob(clientID,'REQUEST')
             self.factory.request_queue.put(request)
@@ -95,6 +94,7 @@ class PFServerProtocol(basic.LineReceiver):
             raise Exception('Could not get job from parent, timeout')
 
     def job_found(self,result):
+        print "Job received from parent, sending to client: %s" % self.job_retreived
         pickled_job=pickle.dumps(self.job_retreived,pickle.HIGHEST_PROTOCOL )
         self.transport.write("JOB SEGMENT:%s\r\n" % pickled_job)
 

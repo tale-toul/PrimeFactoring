@@ -28,7 +28,7 @@ class FCProtocol(basic.LineReceiver):
             self.transport.loseConnection()
 
     def connectionLost(self,reason):
-        print "[%s] Conection closed with %s:%s" % (tstamp(),self.transport.getPeer().host,self.transport.getPeer().port)
+        print "[%s] Conection closed with %s:%s with message: %s" % (tstamp(),self.transport.getPeer().host,self.transport.getPeer().port,reason.getErrorMessage())
         if not self.state in ['ASGJOB','ACKRECV','TIMEOUT']: #If we don't have the job assigment yet, then stop the reactor
             print "Stoping reactor"
             reactor.stop()
@@ -218,7 +218,7 @@ def parse_arguments():
 
 def tstamp():
     ts=datetime.datetime.now()
-    return "%s:%s:%s" % (ts.hour,ts.minute,ts.second)
+    return "%d:%d:%d.%d" % (ts.hour,ts.minute,ts.second,ts.microsecond/1000)
 
 def main():
     reactor.connectTCP(arguments.host,arguments.port,FCFactory())
