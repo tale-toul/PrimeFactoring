@@ -56,17 +56,16 @@ class PFServerProtocol(basic.LineReceiver):
             self.transport.write("REGISTERED:\r\n")
             print "Client registered"
 
-    #Parameters: clientID.- The md5 id assigned to the client when it previously
-    #                   registered. The protocol expects this ID to be the only component
-    #                   of the message after the colom
-    def serve_request(self,clientID):
-        '''Run when the "REQUEST JOB" protocol command is received from the client'''
-        print "Host %s (%s) requesting job" % (self.peer.host,clientID)
-        if clientID in self.factory.registered_clients: #Place job request in queue
-            request=NetJob.NetJob(clientID,'REQUEST')
-            self.factory.request_queue.put(request)
+    #Parameters: pickled_request.- The NetJob object sent by the client
+    def serve_request(self,pickled_request):
+        '''Receives a request from the client and passes it to the parent process to be
+        served. Run when the "REQUEST JOB" protocol command is received from the client'''
+        job_request=pickle.loads(pickled_request) #Get the NetJob back from pickle form
+        print "Host %s (%s...) requesting job %s..." % (self.peer.host,job_request.worker_ID[:7],job_request.job_ID[:7])
+        if job_request.worker_ID in self.factory.registered_clients: #Place job request in queue
+            self.factory.request_queue.put(job_request)
             print "Request sent to parent, waiting for response"
-            self.wait_for_job(clientID)
+            self.wait_for_job(job_request.worker_ID)
         else:
             print "Client not registered"
             self.transport.loseConnection()

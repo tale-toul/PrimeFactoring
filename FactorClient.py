@@ -37,12 +37,14 @@ class FCProtocol(basic.LineReceiver):
     def speak_proto(self,message):
         if self.state=='INI' and message[0].strip() == 'READY TO ACCEPT REQUESTS':
             self.factory.getID(self.transport.getHost().host)
-            if arguments.verbose: print "[%s] Sending register request with ID: %s" % (tstamp(),self.factory.clientID)
+            if arguments.verbose: print "[%s] Sending register request with ID: %s..." % (tstamp(),self.factory.clientID[:7])
             self.transport.write("REGISTER:%s\r\n" % self.factory.clientID)
             self.state='REG'
         elif self.state=='REG' and message[0].strip() =='REGISTERED':
-            if arguments.verbose: print "[%s] Registered, sending job request" % tstamp()
-            self.transport.write("REQUEST JOB:%s\r\n" % self.factory.clientID)
+            request=NetJob.NetJob(self.factory.clientID,'REQUEST')
+            pickled_request=pickle.dumps(request,pickle.HIGHEST_PROTOCOL)
+            if arguments.verbose: print "[%s] Registered, sending job request: %s" % (tstamp(),request)
+            self.transport.write("REQUEST JOB:%s\r\n" % pickled_request)
             self.state='REQJOB'
         elif self.state=='REQJOB':
             if message[0].strip() =='JOB SEGMENT':
