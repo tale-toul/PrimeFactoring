@@ -38,7 +38,7 @@ class NetJob:
         return self.job_type == self.job_type_dict['ack']
 
     def __repr__(self):
-        my_representation="Worker_ID: %s... Job_type: %s Num: %d Segment: %s Results: %s Job_ID: %s..." % (self.worker_ID[:7],self.job_type,self.num, self.segment, self.results, self.job_ID[:7])
+        my_representation="Worker_ID:%s... Job_type:%s Num:%d Segment:%s Results:%s Job_ID:%s..." % (self.worker_ID[:7],self.job_type,self.num, self.segment, self.results, self.job_ID[:7])
         return my_representation
 
     def add_results(self,found_results):

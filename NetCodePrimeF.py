@@ -82,7 +82,7 @@ class PFServerProtocol(basic.LineReceiver):
     def fetch_job(self,clientID):
         if self.loops: #Run for a maximun number of loops 
             self.loops -=1
-            self.job_retreived=self.factory.ordered_jobs.pop(clientID,None)
+            #Fix this part: self.job_retreived=self.factory.ordered_jobs.pop(clientID,None)
             if self.job_retreived:
                 self.lpc_fetch_jobs.stop()
         else:#If we didn't find a suitable job within time, call Errback
@@ -128,9 +128,6 @@ class PFServerProtocolFactory(Factory):
     #Client IP; client ID; registration time
     registered_clients=dict()
 
-    #Dictionary of jobs returned by the parent process
-    ordered_jobs=dict()
-
     def __init__(self,request_queue,result_queue,job_queue):
         self.request_queue=request_queue
         self.result_queue=result_queue
@@ -141,7 +138,7 @@ class PFServerProtocolFactory(Factory):
     def reg_client(self,host,clientID):
         '''Keeps a record of registered clients'''
         if not clientID in self.registered_clients:
-            self.registered_clients[clientID]= host
+            self.registered_clients[clientID]={ 'host': host}
             return True
 
     def order_job(self):
@@ -151,9 +148,9 @@ class PFServerProtocolFactory(Factory):
         while not self.job_queue.empty():
             response=self.job_queue.get()
             if response.worker_ID in self.ordered_jobs:
-                self.ordered_jobs[response.worker_ID].append(response)
+                self.registered_clients[response.worker_ID][jobs].append(response)
             else:
-                self.ordered_jobs[response.worker_ID]=[response]
+                print "Job for a non-registered client:%s, discarding" % response.worker_ID[:7]
 
 
 
