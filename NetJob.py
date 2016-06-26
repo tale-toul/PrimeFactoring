@@ -4,11 +4,12 @@ import datetime
 class NetJob:
 
 
-    #Parameters: worker_ID.- MD5 hash identifing the object
+    #Parameters: worker_ID.- MD5 hash identifying the client this worker belongs to
     #            job_type.- one of 'REQUEST' 'RESPONSE' 'RESULT'
     #            num.- number to factor
     #            segment.- Segment to look for factors in
     #            results.- List of factors found
+    #            job_ID.- MD5 hash identifying this object
     def __init__(self,worker_ID,job_type,num=1,segment=(),results=[]):
         self.worker_ID=worker_ID #md5 hash, string type
         self.job_type=job_type 

@@ -102,25 +102,25 @@ programa (software), es repetitiva e implica operaciones matemáticas, que son r
 muy rápidamente por un ordenador pero lentamente por una persona.
 
 El procedimiento básico para factorizar un número es facil de programar, el funcionamiento
-básico del programa es:
+básico del programa es el siguiente:
 
->1. Le pasamos el número a factorizar al programa como parametro
->
->2. Creamos un bucle en el que al número a factorizar se le aplica la operación módulo
->contra el candidato a ser un factor.  La operación módulo devuelve el resto de la división
->entre dos números, si el resto es cero el número es divisible entre el candidato, lo que
->implica que es un factor de este, si el resto es distinto de cero el número no es
->divisible entre el candidato y por lo tanto no es un factor de este.  
->
->3. Si se encuentra un factor, se añade a la lista de factores, y el número a factorizar se
->divide entre el factor, y el resultado será el que se use a partir de ahora como número a
->factorizar; se vuelve a probar el mismo candidato a factor sobre el nuevo número. 
->
->4. Si no se encuentra un factor se incrementa en uno el candidato y se vuelve a entrar en
->el bucle.
->
->5. El bucle se repite hasta que el candidato a factor sea mayor que el número a
->factorizar.
+1. Le pasamos el número a factorizar al programa como parametro
+
+2. Creamos un bucle en el que al número a factorizar se le aplica la operación módulo
+   contra el candidato a ser un factor `num%candidato`.  La operación módulo devuelve el
+   resto de la división entre dos números, si el resto es cero el número es divisible por
+   el candidato, lo que implica que es un factor de este; si el resto es distinto de cero
+   el número no es divisible por el candidato y por lo tanto no es un factor de este.  
+
+3. Si se encuentra un factor, se añade a la lista de factores, y el número a factorizar se
+   divide por el factor, y el resultado será el que se use a partir de ahora como número a
+   factorizar; se vuelve a probar el mismo candidato a factor sobre el nuevo número. 
+
+4. Se incrementa en uno el candidato para probar el siguiente número y se vuelve a entrar
+   en el bucle.
+
+5. El bucle se repite hasta que el candidato a factor sea mayor que el número a
+   factorizar.
 
 
 #### Validación de resultados
@@ -1843,6 +1843,4 @@ El cliente no soportará opciones como:
 + Generar casos de prueba
 + Ejecutar casos de prueba
 
-### DISTRIBUCION DE LA APLICACION
-[Referencia](https://python-packaging-user-guide.readthedocs.io/en/latest/)
 

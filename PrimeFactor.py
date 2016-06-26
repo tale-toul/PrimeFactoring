@@ -356,7 +356,7 @@ def factor_broker(num_to_factor,bottom,top):
             print "Number of segments: %d" % len(segments)
         slots=min(num_cpus,len(segments))
         remaining_time = groups_of_candidates * phase1_time * 1.11 / slots if segments else 0
-        print "Remaining time %d" % remaining_time
+        if arguments.verbose: print "Remaining time %d" % remaining_time
         if remaining_time > thres_time_daemon: 
             if arguments.verbose: print "Daemonize"
             daemon=Process(target=NetCodePrimeF.server_netcode,args=(request_queue,result_queue,job_queue))
@@ -403,13 +403,13 @@ def factor_broker(num_to_factor,bottom,top):
                 else:
                     print "Some problem with Job result in parent, discarding: %s" % result_job
             cond.wait() #Wait for any of the factoring process to finish
-            print "Woken up at %.2f" % time.time()
+            if arguments.verbose: print "Woken up at %.2f" % time.time()
             temp_proc_list=list()
             for proc in running_processes: #Look for the finished process
                 proc[1].join(0.08)
                 proc[3].acquire()
                 if proc[2].end_of_process: #The process has finished factoring
-                    print "  -Process %s is finished, with factors %s in segment %s:" % (proc[1].name,proc[0],proc[5])
+                    if arguments.verbose: print "  -Process %s is finished, with factors %s in segment %s:" % (proc[1].name,proc[0],proc[5])
                     if len(proc[0]) > 1: # There's at least one factor, should be two
                         list_of_nums_to_factor.extend(list(set(proc[0]))) #Add the factor to the list of pending compound numbers
                         for dying_process in running_processes: #Kill all the running processes, even the dead ones

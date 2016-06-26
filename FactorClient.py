@@ -18,7 +18,7 @@ class FCProtocol(basic.LineReceiver):
 
     def connectionMade(self):
         if arguments.verbose: 
-            print "[%s] Connection made with %s:%s" % (tstamp(),self.transport.getPeer().host,self.transport.getPeer().port)
+            print "[%s] Connection made with %s:%s, protocol state: %s" % (tstamp(),self.transport.getPeer().host,self.transport.getPeer().port,self.state)
 
     def lineReceived(self,line):
         proto_msg=line.split(':',1)
@@ -34,21 +34,25 @@ class FCProtocol(basic.LineReceiver):
             print "Stoping reactor"
             reactor.stop()
 
+    #Parameters:  message.- The two elements list with the protocol message received from
+    #                       the server, the first element is the protocol command and the
+    #                       second the protocol additional info
     def speak_proto(self,message):
+        '''Manages the protocol conversation with the server'''
         if self.state=='INI' and message[0].strip() == 'READY TO ACCEPT REQUESTS':
             self.factory.getID(self.transport.getHost().host)
             if arguments.verbose: print "[%s] Sending register request with ID: %s..." % (tstamp(),self.factory.clientID[:7])
             self.transport.write("REGISTER:%s\r\n" % self.factory.clientID)
             self.state='REG'
         elif self.state=='REG' and message[0].strip() =='REGISTERED':
-            request=NetJob.NetJob(self.factory.clientID,'REQUEST')
-            pickled_request=pickle.dumps(request,pickle.HIGHEST_PROTOCOL)
-            if arguments.verbose: print "[%s] Registered, sending job request: %s" % (tstamp(),request)
-            self.transport.write("REQUEST JOB:%s\r\n" % pickled_request)
+            self.request=NetJob.NetJob(self.factory.clientID,'REQUEST')
+            self.pickled_request=pickle.dumps(self.request,pickle.HIGHEST_PROTOCOL)
+            if arguments.verbose: print "[%s] Registered, sending job request: %s" % (tstamp(),self.request)
+            self.transport.write("REQUEST JOB:%s\r\n" % self.pickled_request)
             self.state='REQJOB'
         elif self.state=='REQJOB':
             if message[0].strip() =='JOB SEGMENT':
-                self.factory.job_segment=pickle.loads(message[1].strip())[0]
+                self.factory.job_segment=pickle.loads(message[1].strip())
                 if self.factory.job_segment.is_response():
                     if arguments.verbose: print "[%s] Receiving job segment: %s" % (tstamp(),self.factory.job_segment)
                     self.state='ASGJOB'
@@ -60,15 +64,15 @@ class FCProtocol(basic.LineReceiver):
                     print "[%s] Expecting a RESPONSE object, got: %s" % self.factory.job_segment
                     reactor.stop()
             elif message[0].strip() == 'REQUEST TIMEOUT':
-                print "[%s] %s" % (tstamp(),message[1].strip())
+                print "[%s] Request time out: %s" % (tstamp(),message[1].strip())
                 print "[%s] Resending job request" % tstamp()
-                self.transport.write("REQUEST JOB:%s\r\n" %self.factory.clientID)
+                self.transport.write("REQUEST JOB:%s\r\n" %self.pickled_request)
             else: #@Repeated code
                 print "[%s] Expecting a RESPONSE object, got: %s" % self.factory.job_segment
                 reactor.stop()
         elif self.state == 'WAITACK': #We are wating for an ACK
             if message[0].strip() == 'JOB SEGMENT':
-                ack_job_segment=pickle.loads(message[1].strip())[0]
+                ack_job_segment=pickle.loads(message[1].strip())
                 if ack_job_segment.is_ack() and ack_job_segment.worker_ID == self.factory.job_segment.worker_ID:
                     print "[%s] ACK received: %s" % (tstamp(),ack_job_segment)
                     self.state='ACKRECV' 
@@ -96,7 +100,7 @@ class FCFactory(protocol.ClientFactory):
 
     #Identitification for this client, assigned by the server
     clientID=None
-    #Factoring job to solve
+    #NetJob object containing the factoring job to solve, only one is available per factory
     job_segment=None
 
     def getID(self,address):

@@ -27,7 +27,7 @@ class PFServerProtocol(basic.LineReceiver):
             # has been sent
     job_retreived=None #Job retreived from the jobs queue
     lpc_fetch_jobs=None #Looping Call to look for jobs in the job queue
-
+    
     def connectionLost(self,reason):
         print "Conection closed with %s with message: %s" % (self.transport.getPeer().host,reason.getErrorMessage())
 
@@ -51,63 +51,100 @@ class PFServerProtocol(basic.LineReceiver):
         self.transport.loseConnection()
 
     def register(self,clientID):
-        print "Registering client from: %s:%s with MD5: %s" % (self.peer.host,self.peer.port,clientID)
+        '''Registers a client'''
+        print "Registering client from: %s:%s with MD5: %s" % (self.peer.host,self.peer.port,clientID[:7])
         if self.factory.reg_client(self.peer.host,clientID):
             self.transport.write("REGISTERED:\r\n")
             print "Client registered"
+        else:
+            print "Client cannot be registered. Already registered?"
+#@Send a protocol message back to the client@#
+            self.transport.loseConnection()
 
     #Parameters: pickled_request.- The NetJob object sent by the client
     def serve_request(self,pickled_request):
         '''Receives a request from the client and passes it to the parent process to be
         served. Run when the "REQUEST JOB" protocol command is received from the client'''
         job_request=pickle.loads(pickled_request) #Get the NetJob back from pickle form
-        print "Host %s (%s...) requesting job %s..." % (self.peer.host,job_request.worker_ID[:7],job_request.job_ID[:7])
-        if job_request.worker_ID in self.factory.registered_clients: #Place job request in queue
-            self.factory.request_queue.put(job_request)
-            print "Request sent to parent, waiting for response"
-            self.wait_for_job(job_request.worker_ID)
+        request_ID=job_request.job_ID #Store the request_ID during this connection
+        print "Host %s (%s...) requesting job %s..." % (self.peer.host,job_request.worker_ID[:7],request_ID[:7])
+        if job_request.worker_ID in self.factory.registered_clients: #If client registered, place job request in queue
+            if job_request.job_ID in self.factory.registered_clients[job_request.worker_ID]:
+                print "Job request %s already received, ignoring" % job_request.job_ID
+            else:
+                self.factory.registered_clients[job_request.worker_ID][job_request.job_ID]=None
+                self.factory.request_queue.put(job_request)
+                print "Request sent to parent, waiting for response"
+                self.wait_for_job(job_request.worker_ID,request_ID,None)
         else:
             print "Client not registered"
             self.transport.loseConnection()
 
-    def wait_for_job(self,clientID):
+    def wait_for_job(self,clientID,request_ID,job_response):
         '''Start the looping call to the function that collects the jobs delivered by the
         parent process.  Starts and tries to get the job for the current net client'''
         if not self.factory.lpc_order_jobs.running: #Start the loop that orders the jobs found in the queue
             self.factory.lpc_order_jobs.start(3) #This is run from the factory
-        self.lpc_fetch_jobs=LoopingCall(self.fetch_job,clientID)
+        self.lpc_fetch_jobs=LoopingCall(self.fetch_job,clientID,request_ID)
         fetch_deferred=self.lpc_fetch_jobs.start(3.5) #This is run in the protocol
-        fetch_deferred.addCallbacks(self.job_found,self.job_not_found)
+        fetch_deferred.addCallbacks(self.job_found,self.job_not_found,errbackArgs=(job_response))
 
-    def fetch_job(self,clientID):
+    def fetch_job(self,clientID,request_ID):
         if self.loops: #Run for a maximun number of loops 
             self.loops -=1
-            #Fix this part: self.job_retreived=self.factory.ordered_jobs.pop(clientID,None)
-            if self.job_retreived:
-                self.lpc_fetch_jobs.stop()
+            if clientID in self.factory.registered_clients:
+                self.job_retreived=self.factory.registered_clients[clientID].get(request_ID,None)
+                if self.job_retreived:
+                    if self.job_retreived.is_ack(): #if it's an ACK remove the job from registered_clients
+                        self.factory.registered_clients[clientID].pop(request_ID)
+                    self.lpc_fetch_jobs.stop()
+            else: #Client not registered!!!
+                self.loops=5 #@I don't like using this constant here@#
+                raise Exception('Client %s not registered' % clientID)
         else:#If we didn't find a suitable job within time, call Errback
             self.loops=5 #@I don't like using this constant here@#
             raise Exception('Could not get job from parent, timeout')
 
     def job_found(self,result):
-        print "Job received from parent, sending to client: %s" % self.job_retreived
+        if self.job_retreived.is_ack():
+            print "Ack received from parent, sendign to client: %s" % self.job_retreived
+        elif self.job_retreived.is_response():
+            print "Job received from parent, sending to client: %s" % self.job_retreived
         pickled_job=pickle.dumps(self.job_retreived,pickle.HIGHEST_PROTOCOL )
         self.transport.write("JOB SEGMENT:%s\r\n" % pickled_job)
 
-    def job_not_found(self,failure):
+    def job_not_found(self,failure,job_response):
         fmsg=failure.getErrorMessage()
         print fmsg
+        if job_response: #Put the job response back in
+            self.factory.registered_clients[job_response.worker_ID][job_response.job_ID]=job_response
         self.transport.write("REQUEST TIMEOUT:%s\r\n" % fmsg)
 
     def receive_results(self,pickle_job):
         '''Receive the results from a client.  The client must be already registered and
             the job must have been previously assigned '''
-        self.job_result=pickle.loads(pickle_job) #Get the NetJob back from pickle form
-        if self.job_result.worker_ID in self.factory.registered_clients: #Place job request in queue
-#@I should also check that the result correponds with a previous request@#
-            self.factory.result_queue.put(self.job_result)
-            print "Results sent to parent, waiting for ACK"
-            self.wait_for_job(self.job_result.worker_ID)
+        job_results=pickle.loads(pickle_job) #Get the NetJob back from pickle form
+        request_ID=job_results.job_ID #Store the request_ID during this connection
+        if job_results.is_result():
+            if job_results.worker_ID in self.factory.registered_clients: #client registered?
+                #Does the job_ID exist and is a response from a request?
+                if request_ID in self.factory.registered_clients[job_results.worker_ID] and self.factory.registered_clients[job_results.worker_ID][request_ID].is_response():
+                    self.factory.result_queue.put(job_results)
+                    #Remove the job from registered clients so it doesn't mess up the waiting for ack process
+                    job_response=self.factory.registered_clients[job_results.worker_ID].get(request_ID) 
+                    self.factory.registered_clients[job_results.worker_ID][request_ID]=None
+                    print "Results sent to parent, waiting for ACK"
+                    self.wait_for_job(job_results.worker_ID,request_ID,job_response) #Wait for ACK from parent
+                else:
+                    print "Results received when not expected, closeing down connection"
+                    self.transport.loseConnection()
+            else:
+                print "Client not registered, closeing down connection"
+                self.transport.loseConnection()
+        else:
+            print "This is not a result object, closing down connection"
+#@Send a protocol message to the client to warn him of the situation
+            self.transport.loseConnection()
 
 
 #ONLY ACCEPTED WHEN COMMING FROM LOCALHOST
@@ -125,7 +162,10 @@ class PFServerProtocolFactory(Factory):
     protocol=PFServerProtocol
 
 
-    #Client IP; client ID; registration time
+    #This data structure is a dictionary of dictionaries:
+    #   -The outer dictionary has keys (clientID) and value the inner dictionary.
+    #   -The inner dictionary has keys: 'host' with value <IP address of the client>
+    #                                   zero or more 'job_ID' with value a NetJob object
     registered_clients=dict()
 
     def __init__(self,request_queue,result_queue,job_queue):
@@ -142,13 +182,17 @@ class PFServerProtocolFactory(Factory):
             return True
 
     def order_job(self):
-        '''Get the elements in the jobs queue and add them to a dictionary indexed by
-        clientID.  A client may have more than one job assigned to it, so the content of
-        the dictionary is a list of NetJob objects '''
+        '''Get the elements in the jobs queue, where the parent put them and add them to a
+        dictionary indexed by clientID.  A client may have several job assingments'''
         while not self.job_queue.empty():
-            response=self.job_queue.get()
-            if response.worker_ID in self.ordered_jobs:
-                self.registered_clients[response.worker_ID][jobs].append(response)
+            response=self.job_queue.get() #Get a NetJob object from the queue
+            if response.worker_ID in self.registered_clients:
+                #Every job back from the parent must have a previous request in registered_clients
+                #@I'm not checking here if the response corresponds with an request; and the ack corresponds with a results @#
+                if response.job_ID in self.registered_clients[response.worker_ID]:
+                    self.registered_clients[response.worker_ID][response.job_ID]=response
+                else:
+                    print "Job %s not requested by client %s, discarding" % (response.job_ID,response.worker_ID)
             else:
                 print "Job for a non-registered client:%s, discarding" % response.worker_ID[:7]
 
