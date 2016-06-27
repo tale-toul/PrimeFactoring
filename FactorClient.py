@@ -76,6 +76,7 @@ class FCProtocol(basic.LineReceiver):
                 if ack_job_segment.is_ack() and ack_job_segment.worker_ID == self.factory.job_segment.worker_ID:
                     print "[%s] ACK received: %s" % (tstamp(),ack_job_segment)
                     self.state='ACKRECV' 
+#@I should unregister here@#
                     self.factory.new_connection()
                     self.transport.loseConnection()
                 else:
@@ -226,6 +227,7 @@ def parse_arguments():
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
     parser.add_argument("host",default='localhost', help="Host name or IP to connect to")
     parser.add_argument("port", help="Server port to connect to", type=int)
+    parser.add_argument("timeout", help="Time to wait for jobs an ACKs", default=10, type=int)
     return parser.parse_args()
 
 def tstamp():

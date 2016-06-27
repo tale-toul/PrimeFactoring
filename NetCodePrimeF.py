@@ -23,11 +23,10 @@ class PFServerProtocol(basic.LineReceiver):
               'STOP REACTOR': 'stop_reactor'}
 
     peer=None #Address object
-    loops=5 #Maximun number of attempts to get the jobs from the parent, once the request
-            # has been sent
     job_retreived=None #Job retreived from the jobs queue
     lpc_fetch_jobs=None #Looping Call to look for jobs in the job queue
-    
+    fetch_timeout=None #Time out flag to be set by the client
+
     def connectionLost(self,reason):
         print "Conection closed with %s with message: %s" % (self.transport.getPeer().host,reason.getErrorMessage())
 
@@ -87,23 +86,19 @@ class PFServerProtocol(basic.LineReceiver):
             self.factory.lpc_order_jobs.start(3) #This is run from the factory
         self.lpc_fetch_jobs=LoopingCall(self.fetch_job,clientID,request_ID)
         fetch_deferred=self.lpc_fetch_jobs.start(3.5) #This is run in the protocol
-        fetch_deferred.addCallbacks(self.job_found,self.job_not_found,errbackArgs=(job_response))
+        fetch_deferred.addCallback(self.job_found)
+        fetch_deferred.addErrback(self.job_not_found,job_response)
 
     def fetch_job(self,clientID,request_ID):
-        if self.loops: #Run for a maximun number of loops 
-            self.loops -=1
-            if clientID in self.factory.registered_clients:
-                self.job_retreived=self.factory.registered_clients[clientID].get(request_ID,None)
-                if self.job_retreived:
-                    if self.job_retreived.is_ack(): #if it's an ACK remove the job from registered_clients
-                        self.factory.registered_clients[clientID].pop(request_ID)
-                    self.lpc_fetch_jobs.stop()
-            else: #Client not registered!!!
-                self.loops=5 #@I don't like using this constant here@#
-                raise Exception('Client %s not registered' % clientID)
-        else:#If we didn't find a suitable job within time, call Errback
-            self.loops=5 #@I don't like using this constant here@#
-            raise Exception('Could not get job from parent, timeout')
+        if self.fetch_timeout: raise Exception('Time out fetching job %s' % request_ID)
+        if clientID in self.factory.registered_clients:
+            self.job_retreived=self.factory.registered_clients[clientID].get(request_ID,None)
+            if self.job_retreived:
+                if self.job_retreived.is_ack(): #if it's an ACK remove the job from registered_clients
+                    self.factory.registered_clients[clientID].pop(request_ID)
+                self.lpc_fetch_jobs.stop()
+        else: #Client not registered!!!
+            raise Exception('Client %s not registered' % clientID)
 
     def job_found(self,result):
         if self.job_retreived.is_ack():
@@ -115,7 +110,7 @@ class PFServerProtocol(basic.LineReceiver):
 
     def job_not_found(self,failure,job_response):
         fmsg=failure.getErrorMessage()
-        print fmsg
+        print "[NCd] %s" % fmsg
         if job_response: #Put the job response back in
             self.factory.registered_clients[job_response.worker_ID][job_response.job_ID]=job_response
         self.transport.write("REQUEST TIMEOUT:%s\r\n" % fmsg)
