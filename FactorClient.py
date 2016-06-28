@@ -11,6 +11,7 @@ import md5
 
 #Factor Client Protocol
 class FCProtocol(basic.LineReceiver):
+    request=None #NetJob request sent to the parent
 
     def __init__(self,factory,state='INI'):
         self.state=state
@@ -41,7 +42,7 @@ class FCProtocol(basic.LineReceiver):
         '''Manages the protocol conversation with the server'''
         if self.state=='INI' and message[0].strip() == 'READY TO ACCEPT REQUESTS':
             self.factory.getID(self.transport.getHost().host)
-            if arguments.verbose: print "[%s] Sending register request with ID: %s..." % (tstamp(),self.factory.clientID[:7])
+            if arguments.verbose: print "[%s] Sending register request with ID: %s" % (tstamp(),self.factory.clientID[:7])
             self.transport.write("REGISTER:%s\r\n" % self.factory.clientID)
             self.state='REG'
         elif self.state=='REG' and message[0].strip() =='REGISTERED':
@@ -50,10 +51,12 @@ class FCProtocol(basic.LineReceiver):
             if arguments.verbose: print "[%s] Registered, sending job request: %s" % (tstamp(),self.request)
             self.transport.write("REQUEST JOB:%s\r\n" % self.pickled_request)
             self.state='REQJOB'
+            tmo_trig=reactor.callLater(arguments.timeout,self.got_timeout)
         elif self.state=='REQJOB':
             if message[0].strip() =='JOB SEGMENT':
                 self.factory.job_segment=pickle.loads(message[1].strip())
                 if self.factory.job_segment.is_response():
+                    tmo_trig.cancel() #Cancel the timeout call
                     if arguments.verbose: print "[%s] Receiving job segment: %s" % (tstamp(),self.factory.job_segment)
                     self.state='ASGJOB'
                     d=self.factory.factor(self.factory.job_segment)
@@ -92,6 +95,13 @@ class FCProtocol(basic.LineReceiver):
         else:
             print "Bad protocol, current state: %s message received: %s" % (self.state,message[0])
 
+    def got_timeout(self):
+        '''sends a message to the server informing the client has timed out waiting
+        for a response or ACK, and closes down the connection with the server'''
+        if arguments.verbose: print "[%s] Time out waiting for response or ack" % tstamp()
+        last_job = self.request if self.request else self.factory.job_segment
+        self.transport.write("CLIENT TIMEOUT:%s\r\n" % pickle.dumps(last_job,pickle.HIGHEST_PROTOCOL))
+        self.transport.loseConnection()
 
 
 
@@ -225,9 +235,9 @@ def parse_arguments():
     '''Parses the command line arguments'''
     parser=argparse.ArgumentParser(description="Find the prime factors of an integer numberi within a segments, all supplied by a server")
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
-    parser.add_argument("host",default='localhost', help="Host name or IP to connect to")
+    parser.add_argument("-i", "--host",default='localhost', help="Host name or IP to connect to")
     parser.add_argument("port", help="Server port to connect to", type=int)
-    parser.add_argument("timeout", help="Time to wait for jobs an ACKs", default=10, type=int)
+    parser.add_argument("-t","--timeout", help="Time to wait for jobs an ACKs", default=10, type=int)
     return parser.parse_args()
 
 def tstamp():

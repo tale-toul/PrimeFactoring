@@ -20,14 +20,17 @@ class PFServerProtocol(basic.LineReceiver):
     messages={'REGISTER': 'register',
               'REQUEST JOB': 'serve_request',
               'SEND RESULTS': 'receive_results',
-              'STOP REACTOR': 'stop_reactor'}
+              'STOP REACTOR': 'stop_reactor',
+              'CLIENT TIMEOUT': 'client_timeout'}
 
     peer=None #Address object
     job_retreived=None #Job retreived from the jobs queue
     lpc_fetch_jobs=None #Looping Call to look for jobs in the job queue
-    fetch_timeout=None #Time out flag to be set by the client
+    stop_fetch_job=None #Time out flag to be set by the client
 
     def connectionLost(self,reason):
+        stop_fetch_job=True
+        self.lpc_fetch_jobs.stop()
         print "Conection closed with %s with message: %s" % (self.transport.getPeer().host,reason.getErrorMessage())
 
     def connectionMade(self):
@@ -66,7 +69,7 @@ class PFServerProtocol(basic.LineReceiver):
         served. Run when the "REQUEST JOB" protocol command is received from the client'''
         job_request=pickle.loads(pickled_request) #Get the NetJob back from pickle form
         request_ID=job_request.job_ID #Store the request_ID during this connection
-        print "Host %s (%s...) requesting job %s..." % (self.peer.host,job_request.worker_ID[:7],request_ID[:7])
+        print "Host %s (%s) requesting job %s" % (self.peer.host,job_request.worker_ID[:7],request_ID[:7])
         if job_request.worker_ID in self.factory.registered_clients: #If client registered, place job request in queue
             if job_request.job_ID in self.factory.registered_clients[job_request.worker_ID]:
                 print "Job request %s already received, ignoring" % job_request.job_ID
@@ -75,6 +78,22 @@ class PFServerProtocol(basic.LineReceiver):
                 self.factory.request_queue.put(job_request)
                 print "Request sent to parent, waiting for response"
                 self.wait_for_job(job_request.worker_ID,request_ID,None)
+        else:
+            print "Client not registered"
+            self.transport.loseConnection()
+
+    def client_timeout(self,netjob):
+        '''This function is called when the client send a timeout message, it doesn't do
+        much, just prints a message, the actual action is done in the connectionLost
+        function where the looping call is stopped '''
+        job_tmo=pickle.loads(netjob) #Get the NetJob back from pickle form
+        if job_tmo.worker_ID in self.factory.registered_clients:
+            if job_tmo.job_ID in self.factory.registered_clients[job_tmo.worker_ID]:
+                self.factory.registered_clients[job_tmo.worker_ID].pop(job_tmo.job_ID)
+                print "Job %s cancelled" % job_tmo.job_ID
+                self.stop_fetch_job=True
+            else:
+                print "Timeout for non existing job %s" % job_tmo.job_ID
         else:
             print "Client not registered"
             self.transport.loseConnection()
@@ -90,7 +109,7 @@ class PFServerProtocol(basic.LineReceiver):
         fetch_deferred.addErrback(self.job_not_found,job_response)
 
     def fetch_job(self,clientID,request_ID):
-        if self.fetch_timeout: raise Exception('Time out fetching job %s' % request_ID)
+        if self.stop_fetch_job: raise Exception('Time out fetching job %s' % request_ID)
         if clientID in self.factory.registered_clients:
             self.job_retreived=self.factory.registered_clients[clientID].get(request_ID,None)
             if self.job_retreived:
@@ -101,12 +120,13 @@ class PFServerProtocol(basic.LineReceiver):
             raise Exception('Client %s not registered' % clientID)
 
     def job_found(self,result):
-        if self.job_retreived.is_ack():
-            print "Ack received from parent, sendign to client: %s" % self.job_retreived
-        elif self.job_retreived.is_response():
-            print "Job received from parent, sending to client: %s" % self.job_retreived
-        pickled_job=pickle.dumps(self.job_retreived,pickle.HIGHEST_PROTOCOL )
-        self.transport.write("JOB SEGMENT:%s\r\n" % pickled_job)
+        if not self.stop_fetch_job:
+            if self.job_retreived.is_ack():
+                print "Ack received from parent, sendign to client: %s" % self.job_retreived
+            elif self.job_retreived.is_response():
+                print "Job received from parent, sending to client: %s" % self.job_retreived
+            pickled_job=pickle.dumps(self.job_retreived,pickle.HIGHEST_PROTOCOL )
+            self.transport.write("JOB SEGMENT:%s\r\n" % pickled_job)
 
     def job_not_found(self,failure,job_response):
         fmsg=failure.getErrorMessage()
@@ -187,7 +207,7 @@ class PFServerProtocolFactory(Factory):
                 if response.job_ID in self.registered_clients[response.worker_ID]:
                     self.registered_clients[response.worker_ID][response.job_ID]=response
                 else:
-                    print "Job %s not requested by client %s, discarding" % (response.job_ID,response.worker_ID)
+                    print "Job %s not requested by client %s, discarding" % (response.job_ID[:7],response.worker_ID[:7])
             else:
                 print "Job for a non-registered client:%s, discarding" % response.worker_ID[:7]
 
