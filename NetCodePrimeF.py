@@ -30,7 +30,8 @@ class PFServerProtocol(basic.LineReceiver):
 
     def connectionLost(self,reason):
         stop_fetch_job=True
-        self.lpc_fetch_jobs.stop()
+        if self.lpc_fetch_jobs.running:
+            self.lpc_fetch_jobs.stop()
         print "Conection closed with %s with message: %s" % (self.transport.getPeer().host,reason.getErrorMessage())
 
     def connectionMade(self):

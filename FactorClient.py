@@ -50,13 +50,13 @@ class FCProtocol(basic.LineReceiver):
             self.pickled_request=pickle.dumps(self.request,pickle.HIGHEST_PROTOCOL)
             if arguments.verbose: print "[%s] Registered, sending job request: %s" % (tstamp(),self.request)
             self.state='REQJOB'
-            tmo_trig=reactor.callLater(arguments.timeout,self.got_timeout)
+            self.tmo_trig=reactor.callLater(arguments.timeout,self.got_timeout)
             self.transport.write("REQUEST JOB:%s\r\n" % self.pickled_request)
         elif self.state=='REQJOB':
             if message[0].strip() =='JOB SEGMENT':
                 self.factory.job_segment=pickle.loads(message[1].strip())
                 if self.factory.job_segment.is_response():
-                    tmo_trig.cancel() #Cancel the timeout call
+                    self.tmo_trig.cancel() #Cancel the timeout call
                     if arguments.verbose: print "[%s] Receiving job segment: %s" % (tstamp(),self.factory.job_segment)
                     self.state='ASGJOB'
                     d=self.factory.factor(self.factory.job_segment)
