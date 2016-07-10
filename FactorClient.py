@@ -49,9 +49,9 @@ class FCProtocol(basic.LineReceiver):
             self.request=NetJob.NetJob(self.factory.clientID,'REQUEST')
             self.pickled_request=pickle.dumps(self.request,pickle.HIGHEST_PROTOCOL)
             if arguments.verbose: print "[%s] Registered, sending job request: %s" % (tstamp(),self.request)
-            self.transport.write("REQUEST JOB:%s\r\n" % self.pickled_request)
             self.state='REQJOB'
             tmo_trig=reactor.callLater(arguments.timeout,self.got_timeout)
+            self.transport.write("REQUEST JOB:%s\r\n" % self.pickled_request)
         elif self.state=='REQJOB':
             if message[0].strip() =='JOB SEGMENT':
                 self.factory.job_segment=pickle.loads(message[1].strip())
