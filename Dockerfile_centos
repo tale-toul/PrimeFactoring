@@ -1,0 +1,17 @@
+FROM centos
+MAINTAINER Tale <tale.toul@gmail.com>
+COPY ./epel-release-latest-7.noarch.rpm /root
+RUN rpm -ivh /root/epel-release-latest-7.noarch.rpm && rm
+/root/epel-release-latest-7.noarch.rpm
+RUN yum install -y --setopt=tsflags=nodocs python-gmpy2 gcc python-devel python-pip \
+        && pip install --no-cache-dir Twisted \
+        && yum remove -y gcc cpp glibc-devel glibc-headers kernel-headers libgomp
+        python-devel \
+        && yum clean all
+RUN useradd factorer
+ENV APH /home/factorer/FactorC
+#ADD creates the directory if it doesn't exists
+ADD *.py $APH/
+USER factorer
+WORKDIR $APH
+ENTRYPOINT ["python"]

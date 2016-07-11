@@ -30,7 +30,9 @@ class PFServerProtocol(basic.LineReceiver):
 
     def connectionLost(self,reason):
         stop_fetch_job=True
-        if self.lpc_fetch_jobs.running:
+        # When a connection with a client is closed, also stop looking for jobs or ACKs
+        # for that client, if we are doing so, that's it
+        if self.lpc_fetch_jobs and self.lpc_fetch_jobs.running:
             self.lpc_fetch_jobs.stop()
         print "Conection closed with %s with message: %s" % (self.transport.getPeer().host,reason.getErrorMessage())
 
