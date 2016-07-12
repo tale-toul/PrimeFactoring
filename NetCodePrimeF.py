@@ -29,7 +29,7 @@ class PFServerProtocol(basic.LineReceiver):
     stop_fetch_job=None #Time out flag to be set by the client
 
     def connectionLost(self,reason):
-        stop_fetch_job=True
+        self.stop_fetch_job=True
         # When a connection with a client is closed, also stop looking for jobs or ACKs
         # for that client, if we are doing so, that's it
         if self.lpc_fetch_jobs and self.lpc_fetch_jobs.running:
@@ -216,6 +216,12 @@ class PFServerProtocolFactory(Factory):
 
 
 
+def tstamp():
+    '''Returns a string representing the current time in the format hour:min:sec.mili'''
+    ts=datetime.datetime.now()
+    return "%d:%d:%d.%d" % (ts.hour,ts.minute,ts.second,ts.microsecond/1000)
+
+
 #Parameters: request_queue.- Multiprocessing Queue used by this module to place NetJob
 #               objects representing job requests for the parent process. It's shared with
 #               the parent process.
@@ -229,9 +235,9 @@ def server_netcode(request_queue,result_queue,job_queue):
     '''this is the main function in this package, starts the twisted reactor, opens the
     sockets to listen to incoming connections, serves requests, etc.'''
     factory=PFServerProtocolFactory(request_queue,result_queue,job_queue)
-    print "[%s] Starting server in port %d" % (datetime.datetime.now(),external_port)
+    print "[%s] Starting server in port %d" % (tstamp(),external_port)
     reactor.listenTCP(external_port,factory)
-    print "[%s] Starting server in port %d and interface localhost" % (datetime.datetime.now(),internal_port)
+    print "[%s] Starting server in port %d and interface localhost" % (tstamp(),internal_port)
     reactor.listenTCP(internal_port,factory,interface='localhost')
     reactor.run()
 

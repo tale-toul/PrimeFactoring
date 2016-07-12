@@ -32,8 +32,10 @@ class FCProtocol(basic.LineReceiver):
     def connectionLost(self,reason):
         print "[%s] Conection closed with %s:%s with message: %s" % (tstamp(),self.transport.getPeer().host,self.transport.getPeer().port,reason.getErrorMessage())
         if not self.state in ['ASGJOB','ACKRECV']: #If we don't have the job assigment yet, then stop the reactor
-            print "Stoping reactor"
+            print "[%s] Stoping reactor" % tstamp()
             reactor.stop()
+        if self.state == 'ACKRECV':
+            print "..."
 
     #Parameters:  message.- The two elements list with the protocol message received from
     #                       the server, the first element is the protocol command and the
@@ -63,6 +65,7 @@ class FCProtocol(basic.LineReceiver):
                     d.addCallback(self.factory.send_results)
                     d.addErrback(self.factory.factoring_err)
                     self.transport.loseConnection()
+                    print "[%s] Factoring..." % tstamp()
                 else:
                     print "[%s] Expecting a RESPONSE object, got: %s" % self.factory.job_segment
                     reactor.stop()
@@ -185,7 +188,7 @@ class FCFactory(protocol.ClientFactory):
                 compnum,max_candidate=self.update_resnum(compnum,own_results,candidate,last_candidate,max_candidate)
             candidate += increment[3] #This increment depends on the incremnet list selected bejore
         if compnum != 1: own_results.append(compnum)
-        print "[%s] factors found: %s" % (tstamp(),own_results)
+        print "[%s] Factors found: %s" % (tstamp(),own_results)
         gerbasio.callback(own_results)
 
     #Parameters: compnum.- An integer to factorize
@@ -241,8 +244,9 @@ def parse_arguments():
     return parser.parse_args()
 
 def tstamp():
+    '''Returns a string representing the current time in the format hour:min:sec.mili'''
     ts=datetime.datetime.now()
-    return "%d:%d:%d.%d" % (ts.hour,ts.minute,ts.second,ts.microsecond/1000)
+    return "%02d:%02d:%02d.%03d" % (ts.hour,ts.minute,ts.second,ts.microsecond/1000)
 
 def main():
     reactor.connectTCP(arguments.host,arguments.port,FCFactory())

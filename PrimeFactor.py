@@ -3,7 +3,7 @@
 #Version 2.4.3
 
 import sys
-import time
+import time,datetime
 import argparse
 import os, os.path
 import json
@@ -403,13 +403,13 @@ def factor_broker(num_to_factor,bottom,top):
                 else:
                     print "Some problem with Job result in parent, discarding: %s" % result_job
             cond.wait() #Wait for any of the factoring process to finish
-            if arguments.verbose: print "Woken up at %.2f" % time.time()
+            if arguments.verbose: print "Woken up at %s" % tstamp()
             temp_proc_list=list()
             for proc in running_processes: #Look for the finished process
                 proc[1].join(0.08)
                 proc[3].acquire()
                 if proc[2].end_of_process: #The process has finished factoring
-                    if arguments.verbose: print "  -Process %s is finished, with factors %s in segment %s:" % (proc[1].name,proc[0],proc[5])
+                    if arguments.verbose: print "  -Process %s is finished, with factors %s in segment %s" % (proc[1].name,proc[0],proc[5])
                     if len(proc[0]) > 1: # There's at least one factor, should be two
                         list_of_nums_to_factor.extend(list(set(proc[0]))) #Add the factor to the list of pending compound numbers
                         for dying_process in running_processes: #Kill all the running processes, even the dead ones
@@ -473,6 +473,11 @@ def create_process(num_to_factor,manager,cond,segment,phase1=False):
     job=Process(target=factorize_with_limits,args=(num_to_factor,own_results,nms,loc,event,cond,segment[0],segment[1],phase1))
     return [own_results,job,nms,loc,event,segment]
 
+
+def tstamp():
+    '''Returns a string representing the current time in the format hour:min:sec.mili'''
+    ts=datetime.datetime.now()
+    return "%d:%d:%d.%d" % (ts.hour,ts.minute,ts.second,ts.microsecond/1000)
 
 #####MAIN#######
 
