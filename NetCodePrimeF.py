@@ -34,11 +34,11 @@ class PFServerProtocol(basic.LineReceiver):
         # for that client, if we are doing so, that's it
         if self.lpc_fetch_jobs and self.lpc_fetch_jobs.running:
             self.lpc_fetch_jobs.stop()
-        print "Conection closed with %s with message: %s" % (self.transport.getPeer().host,reason.getErrorMessage())
+        print "[NCD] Conection closed with %s with message: %s" % (self.transport.getPeer().host,reason.getErrorMessage())
 
     def connectionMade(self):
         self.peer=self.transport.getPeer()
-        print "Connection received from host %s port %d" % (self.peer.host,self.peer.port)
+        print"[NCD]Connection received from host %s port %d" % (self.peer.host,self.peer.port)
         self.sendLine("READY TO ACCEPT REQUESTS:")
 
     def lineReceived(self,line):
@@ -47,7 +47,7 @@ class PFServerProtocol(basic.LineReceiver):
             next_step_proto=self.messages.get(proto_msg[0].strip(),'unknown_message')
             getattr(self,next_step_proto)(proto_msg[1].strip())
         else:
-            print "Unkknow message %s" % line
+            print"[NCD]Unkknow message %s" % line
             self.unknown_message(line)
             self.transport.loseConnection()
 
@@ -57,12 +57,12 @@ class PFServerProtocol(basic.LineReceiver):
 
     def register(self,clientID):
         '''Registers a client'''
-        print "Registering client from: %s:%s with MD5: %s" % (self.peer.host,self.peer.port,clientID[:7])
+        print"[NCD]Registering client from: %s:%s with MD5: %s" % (self.peer.host,self.peer.port,clientID[:7])
         if self.factory.reg_client(self.peer.host,clientID):
             self.transport.write("REGISTERED:\r\n")
-            print "Client registered"
+            print"[NCD]Client registered"
         else:
-            print "Client cannot be registered. Already registered?"
+            print"[NCD]Client cannot be registered. Already registered?"
 #@Send a protocol message back to the client@#
             self.transport.loseConnection()
 
@@ -72,17 +72,17 @@ class PFServerProtocol(basic.LineReceiver):
         served. Run when the "REQUEST JOB" protocol command is received from the client'''
         job_request=pickle.loads(pickled_request) #Get the NetJob back from pickle form
         request_ID=job_request.job_ID #Store the request_ID during this connection
-        print "Host %s (%s) requesting job %s" % (self.peer.host,job_request.worker_ID[:7],request_ID[:7])
+        print"[NCD]Host %s (%s) requesting job %s" % (self.peer.host,job_request.worker_ID[:7],request_ID[:7])
         if job_request.worker_ID in self.factory.registered_clients: #If client registered, place job request in queue
             if job_request.job_ID in self.factory.registered_clients[job_request.worker_ID]:
-                print "Job request %s already received, ignoring" % job_request.job_ID
+                print"[NCD]Job request %s already received, ignoring" % job_request.job_ID
             else:
                 self.factory.registered_clients[job_request.worker_ID][job_request.job_ID]=None
                 self.factory.request_queue.put(job_request)
-                print "Request sent to parent, waiting for response"
+                print"[NCD]Request sent to parent, waiting for response"
                 self.wait_for_job(job_request.worker_ID,request_ID,None)
         else:
-            print "Client not registered"
+            print"[NCD]Client not registered"
             self.transport.loseConnection()
 
     def client_timeout(self,netjob):
@@ -93,12 +93,12 @@ class PFServerProtocol(basic.LineReceiver):
         if job_tmo.worker_ID in self.factory.registered_clients:
             if job_tmo.job_ID in self.factory.registered_clients[job_tmo.worker_ID]:
                 self.factory.registered_clients[job_tmo.worker_ID].pop(job_tmo.job_ID)
-                print "Job %s cancelled" % job_tmo.job_ID
+                print"[NCD]Job %s cancelled" % job_tmo.job_ID
                 self.stop_fetch_job=True
             else:
-                print "Timeout for non existing job %s" % job_tmo.job_ID
+                print"[NCD]Timeout for non existing job %s" % job_tmo.job_ID
         else:
-            print "Client not registered"
+            print"[NCD]Client not registered"
             self.transport.loseConnection()
 
     def wait_for_job(self,clientID,request_ID,job_response):
@@ -125,15 +125,15 @@ class PFServerProtocol(basic.LineReceiver):
     def job_found(self,result):
         if not self.stop_fetch_job:
             if self.job_retreived.is_ack():
-                print "Ack received from parent, sendign to client: %s" % self.job_retreived
+                print"[NCD]Ack received from parent, sendign to client: %s" % self.job_retreived
             elif self.job_retreived.is_response():
-                print "Job received from parent, sending to client: %s" % self.job_retreived
+                print"[NCD]Job received from parent, sending to client: %s" % self.job_retreived
             pickled_job=pickle.dumps(self.job_retreived,pickle.HIGHEST_PROTOCOL )
             self.transport.write("JOB SEGMENT:%s\r\n" % pickled_job)
 
     def job_not_found(self,failure,job_response):
         fmsg=failure.getErrorMessage()
-        print "[NCd] %s" % fmsg
+        print"[NCD] %s" % fmsg
         if job_response: #Put the job response back in
             self.factory.registered_clients[job_response.worker_ID][job_response.job_ID]=job_response
         self.transport.write("REQUEST TIMEOUT:%s\r\n" % fmsg)
@@ -151,16 +151,16 @@ class PFServerProtocol(basic.LineReceiver):
                     #Remove the job from registered clients so it doesn't mess up the waiting for ack process
                     job_response=self.factory.registered_clients[job_results.worker_ID].get(request_ID) 
                     self.factory.registered_clients[job_results.worker_ID][request_ID]=None
-                    print "Results sent to parent, waiting for ACK"
+                    print"[NCD]Results sent to parent, waiting for ACK"
                     self.wait_for_job(job_results.worker_ID,request_ID,job_response) #Wait for ACK from parent
                 else:
-                    print "Results received when not expected, closeing down connection"
+                    print"[NCD]Results received when not expected, closeing down connection"
                     self.transport.loseConnection()
             else:
-                print "Client not registered, closeing down connection"
+                print"[NCD]Client not registered, closeing down connection"
                 self.transport.loseConnection()
         else:
-            print "This is not a result object, closing down connection"
+            print"[NCD]This is not a result object, closing down connection"
 #@Send a protocol message to the client to warn him of the situation
             self.transport.loseConnection()
 
@@ -210,9 +210,9 @@ class PFServerProtocolFactory(Factory):
                 if response.job_ID in self.registered_clients[response.worker_ID]:
                     self.registered_clients[response.worker_ID][response.job_ID]=response
                 else:
-                    print "Job %s not requested by client %s, discarding" % (response.job_ID[:7],response.worker_ID[:7])
+                    print"[NCD]Job %s not requested by client %s, discarding" % (response.job_ID[:7],response.worker_ID[:7])
             else:
-                print "Job for a non-registered client:%s, discarding" % response.worker_ID[:7]
+                print"[NCD]Job for a non-registered client:%s, discarding" % response.worker_ID[:7]
 
 
 
@@ -235,9 +235,9 @@ def server_netcode(request_queue,result_queue,job_queue):
     '''this is the main function in this package, starts the twisted reactor, opens the
     sockets to listen to incoming connections, serves requests, etc.'''
     factory=PFServerProtocolFactory(request_queue,result_queue,job_queue)
-    print "[%s] Starting server in port %d" % (tstamp(),external_port)
+    print"[NCD][%s] Starting server in port %d" % (tstamp(),external_port)
     reactor.listenTCP(external_port,factory)
-    print "[%s] Starting server in port %d and interface localhost" % (tstamp(),internal_port)
+    print"[NCD][%s] Starting server in port %d and interface localhost" % (tstamp(),internal_port)
     reactor.listenTCP(internal_port,factory,interface='localhost')
     reactor.run()
 
