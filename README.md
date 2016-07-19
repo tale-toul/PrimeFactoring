@@ -1812,8 +1812,11 @@ dificil de entender, de ahí esta explicación.
 ### PARALELISMO EN RED
 **Version 3.0**
 
-Vamos a extender la capacidad de buscar factores de forma paralela a otros equipos
-conectados a través de la red.
+El siguiente paso en la mejora de la aplicación consiste en añadir la posibilidad de
+distribuir el trabajo de factorización entre distintos procesos conectados a través de la
+red.  Existirá un proceso principal que se encargará de dividir el trabajo de
+factorización en una serie de subtrabajos y de distribuir dichos subtrabajos entre los
+clientes que los soliciten.
 
 + Usamos Twisted para conectar a los distintos factorizadores.
 + El código de red se ejecuta en un proceso independiente, por el tipo de funcionamiento
