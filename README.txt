@@ -160,11 +160,12 @@ Generacion automática de casos de prueba
 Para generar casos de prueba sin necesidad de introducirlos uno a uno voy a usar la
 siguiente orden en una consola:
 
- # for x in {1..500}; do ./PrimeFactor.py --addtest testcases.dat -v $(python -c "import random;print random.randint(1000000,9999999)"); done
+ # for x in {1..500}; do ./PrimeFactor.py --addtest testcases.dat -v $(python3 -c "import random;print(random.randint(1000000,9999999))"); done
 
 Esta orden esta compuesta por un bucle que se ejecutará 500 veces, dentro del bucle se
 ejecuta el programa de factorización, y el número a factorizar es generado por un trozo de
 código python, que genera un número aleatorio dentro del rango que se le indica.
+(Orden actualizada a Python 3: en Python 2 se usaba "python" y "print" sin paréntesis.)
 
 
 
@@ -404,6 +405,12 @@ version, el timpo se ha reducido a la mitad del que se necesito en la version 1.
         >>sys.maxint
         2147483647
 
+    Nota (Python 3): todo lo anterior se refiere a Python 2.  En Python 3 los tipos "int"
+    y "long" se han unificado en un único tipo "int" de precisión ilimitada, el sufijo L ya
+    no existe y sys.maxint ha desaparecido (sys.maxsize no es un límite para los enteros).
+    Ver la sección MIGRACIÓN A PYTHON 3 al final de este documento.
+    https://docs.python.org/3/library/stdtypes.html#numeric-types-int-float-complex
+
 Nivel NO batido.  Este nivel de momento nos bate a nosotros.
 
 
@@ -578,8 +585,9 @@ Nivel batido.
     factorización sigue pasando lo mismo con este número, si factorizamos el último primo
     (7683479) solo necesita unos 7 segundos, pero el número completo tarda 4 veces más, no
     se a qué se debe esto ya que los primeros factores se encuentran rápido y entonces nos
-    queda el último factor, que ahora tarda mucho más. 
-    
+    queda el último factor, que ahora tarda mucho más.
+    (Ver una posible explicación en la sección MIGRACIÓN A PYTHON 3.)
+
  2-Número compuesto por dos primos
     2803249819 = [36523, 76753] In 0.2087 seconds
 
@@ -598,3 +606,98 @@ Nivel no batido.
  1-Número compuesto múltiple
  2-Número compuesto por dos primos
  3-Número primo
+
+
+
+VERSION 1.2-PYTHON3: MIGRACIÓN A PYTHON 3
+
+El programa estaba escrito originalmente en Python 2 y se ha migrado a Python 3.  La
+lógica del algoritmo de factorización no cambia: se siguen probando los candidatos 2, 3 y
+5 y después los terminados en 7, 9, 1 y 3, exactamente igual que en la versión 1.2.
+
+Ahora el programa se ejecuta con:
+
+    $ python3 PrimeFactor.py <número>
+    $ ./PrimeFactor.py <número>        (la primera línea apunta ahora a python3)
+
+
+¿Por qué migrar?
+
+-Python 2 dejó de tener soporte el 1 de enero de 2020: no recibe correcciones de errores
+ni parches de seguridad.
+-Las distribuciones actuales ya no incluyen Python 2.  En el equipo donde se ha hecho la
+migración (Fedora) no existe ningún intérprete python2, así que el programa sencillamente
+no se podía ejecutar.
+-Una de las mejoras pendientes (ver TODO.txt) es usar la biblioteca gmpy2, cuyas versiones
+actuales solo funcionan con Python 3.
+-Python 3 simplifica el manejo de enteros: ya no hay dos tipos (int y long) sino uno solo,
+de precisión ilimitada.  Esto está directamente relacionado con los problemas de
+rendimiento que vimos en el nivel 10 (ver más abajo).
+
+
+Cambios realizados en el código
+
+-División entera: "compnum /= candidate" pasa a ser "compnum //= candidate" (7 lugares).
+Este es el cambio importante.  En Python 2 el operador "/" entre dos enteros devolvía un
+entero, pero en Python 3 siempre devuelve un número en coma flotante (float).  Un float
+solo representa enteros de forma exacta hasta 2^53 (unas 16 cifras), así que con números
+grandes el programa habría obtenido factores incorrectos sin dar ningún error.  El
+operador "//" mantiene la división entera y exacta, que es lo que el programa necesita
+(recordemos que en este proyecto todas las operaciones deben dar enteros positivos).
+-La instrucción print pasa a ser la función print().  La línea que terminaba en coma
+("Factors of N = [...]",) usa ahora end=" " cuando se activa -v, para que el tiempo siga
+apareciendo en la misma línea.
+-raw_input() pasa a ser input().
+-Ordenación de los casos de prueba: en Python 3 dict.keys() ya no devuelve una lista, así
+que "test_cases.keys().sort(key=int)" se sustituye por "sorted(test_cases.keys(), key=int)".
+-La primera línea del programa (shebang) pasa a ser "#!/usr/bin/env python3".
+-La cabecera del programa indica ahora la nueva versión: "#Version 1.2-python3".
+-El análisis de la línea de comandos sigue usando el módulo estándar argparse, que no
+necesita cambios.  Documentación de argparse para Python 3:
+https://docs.python.org/3/howto/argparse.html
+
+
+Una posible explicación al misterio del número 6569374545
+
+En las pruebas del nivel 10 (versiones 1.1 y 1.2) vimos que 6569374545 = [3, 3, 5, 19,
+7683479] tardaba unas 4 veces más que factorizar su último factor (7683479) por separado,
+y no sabíamos por qué.  La explicación más probable está en los tipos de Python 2:
+6569374545 es mayor que sys.maxint (2147483647), así que se almacena como "long".  Al
+dividir un long entre un int, Python 2 devuelve siempre un long, aunque el resultado
+quepa en un int.  Por lo tanto, después de encontrar los factores 3, 3, 5 y 19, el número
+que queda (7683479) sigue siendo un long, y todas las operaciones módulo de la búsqueda
+se hacen con aritmética de long, mucho más lenta.  En cambio, cuando se factoriza 7683479
+directamente, se usa un int desde el principio.
+
+No he podido confirmarlo ejecutando Python 2, porque ya no está instalado.  Con Python 3
+este efecto desaparece: solo hay un tipo de entero, así que el tiempo no depende de por
+dónde haya pasado el número antes.
+
+Las tablas de tiempos de las versiones 1.0, 1.1 y 1.2 se obtuvieron con Python 2 en una
+Raspberry Pi y no se han vuelto a medir.  Los tiempos con Python 3 serán distintos (no
+hay salto brusco al pasar de sys.maxint, pero los enteros pequeños pueden ser algo más
+lentos que el int de Python 2), así que las próximas pruebas deberán tomar nuevas
+medidas de referencia.
+
+
+Informe de validación de la migración
+
+-Batería de pruebas completa: "--runtest testcases.dat" con los 1837 casos de prueba,
+todos superados sin ningún "FAILED test".  Unos 43 segundos en total (en un PC actual,
+no en la Raspberry Pi de referencia).
+-Factorizaciones sueltas: 14 = [2, 7], 360 con -v = [2, 2, 2, 3, 3, 5] con el tiempo en
+la misma línea, y 1 = [] (los factores se validan correctamente).
+-Números negativos: siguen rechazándose con el mismo código de salida.
+-Señal USR1 y CTRL-C: probados con 3 * (2^61 - 1) = 6917529027641081853, un número por
+encima de la precisión de un float.  La señal USR1 muestra los factores encontrados (3),
+el último candidato y el tiempo usado, y la factorización continúa.  CTRL-C muestra los
+resultados parciales y termina con código de salida 3.
+-"--addtest": añade un caso nuevo y rechaza uno repetido con código de salida 2.  Probado
+sobre una copia de testcases.dat, el fichero original no se ha modificado.
+
+
+Pendiente
+
+-TODO.txt todavía enlaza a la documentación de argparse de Python 2
+(https://docs.python.org/2/howto/argparse.html); la referencia correcta para Python 3 es
+https://docs.python.org/3/howto/argparse.html

@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-#Version 1.2.0
+#Version 1.2-python3
 
 import sys
 import time
@@ -38,44 +38,44 @@ def factorize(compnum):
         while candidate == 2: #Consider 2 as a special case
             if(compnum%candidate == 0):
                 pfactors.append(candidate)
-                compnum /= candidate
+                compnum //= candidate
             else:
                 candidate += 1 #Now candidate equals 3
         while candidate == 3: #Consider 3 as a special case
             if(compnum%candidate == 0):
                 pfactors.append(candidate)
-                compnum /= candidate
+                compnum //= candidate
             else:
                 candidate += 2 #Now candidate equals 5
         while candidate == 5: #Consider 5 as a special case
             if(compnum%candidate == 0):
                 pfactors.append(candidate)
-                compnum /= candidate
+                compnum //= candidate
             else:
                 candidate += 2 #Now candidate equals 7
         while candidate <= compnum: #Bucle general
             while compnum%candidate == 0: # For candidates ending in 7
                 pfactors.append(candidate)
-                compnum /= candidate
+                compnum //= candidate
             candidate += 2 #Only check for odd numbers, even numbers cannot be primes
             while compnum%candidate == 0: #For candidates ending in 9
                 pfactors.append(candidate)
-                compnum /= candidate
+                compnum //= candidate
             candidate += 2
             while compnum%candidate == 0: #For candidates ending in 1
                 pfactors.append(candidate)
-                compnum /= candidate
+                compnum //= candidate
             candidate += 2
             while compnum%candidate == 0: #For candidates ending in 3
                 pfactors.append(candidate)
-                compnum /= candidate
+                compnum //= candidate
             candidate += 4
         signal.signal(signal.SIGUSR1,signal.SIG_DFL) #Sets the handler to its default state
         return pfactors #In the end at least pfactors contains compnum
     except KeyboardInterrupt:
-        print "Program interrupted by user"
-        print "Factors found so far:",pfactors
-        print "Last candidate:",candidate
+        print("Program interrupted by user")
+        print("Factors found so far:",pfactors)
+        print("Last candidate:",candidate)
         raise
 
 #Parameters: none
@@ -101,7 +101,7 @@ def read_test_cases(file):
         try:
             f_in=open(file)
         except:
-            print "Could not open file",file,"to read"
+            print("Could not open file",file,"to read")
             exit(-2)
         test_serialized=f_in.read()
         test_cases_dict=json.loads(test_serialized)
@@ -118,20 +118,19 @@ def run_test_cases(batch_file):
     count=1
     test_cases_size=len(test_cases)
     if test_cases_size >0: #There are tests to be run
-        Ky=test_cases.keys() #Get a list of the keys (numbers) in the dictionary
-        Ky.sort(key=int) #sort the list numerically
+        Ky=sorted(test_cases.keys(),key=int) #Get a list of the keys (numbers) in the dictionary, sorted numerically
         for case in Ky: #case is a string
-            if arguments.verbose: print case
+            if arguments.verbose: print(case)
             t_start=time.time()
             factors=factorize(int(case))
             t_end=time.time()
             if factors == test_cases[case] and arguments.verbose: 
-                print "\t",factors, "Passed in",round(t_end-t_start,4),"seconds.", count,"of", test_cases_size
+                print("\t",factors, "Passed in",round(t_end-t_start,4),"seconds.", count,"of", test_cases_size)
             elif factors != test_cases[case]:
-                print "FAILED test:", case,test_cases[case],"!=",case,factors,"time",round(t_end-t_start,4),"seconds"
-                raw_input("Press any key to continue")
+                print("FAILED test:", case,test_cases[case],"!=",case,factors,"time",round(t_end-t_start,4),"seconds")
+                input("Press any key to continue")
             count +=1
-    else: print "Empty test case batch"
+    else: print("Empty test case batch")
 
 #Parameters: signum.- The signal number used with this function
 #           stack.- The current stack frame 
@@ -142,11 +141,11 @@ def run_test_cases(batch_file):
 #We never call this function, it is called by the signal handler
 def signal_show_current_status(signum,stack):
    (args,varargs,keywords,local_vars)=inspect.getargvalues(stack)
-   print "Received signal",signum
-   print "\tFactors found so far:",local_vars['pfactors']
-   print "\tLast candidate:",local_vars['candidate']
+   print("Received signal",signum)
+   print("\tFactors found so far:",local_vars['pfactors'])
+   print("\tLast candidate:",local_vars['candidate'])
    t_so_far=time.time()
-   print "\tTime used:", round(t_so_far-t_start,3),"seconds"
+   print("\tTime used:", round(t_so_far-t_start,3),"seconds")
 
 
 #####MAIN#######
@@ -155,12 +154,12 @@ def signal_show_current_status(signum,stack):
 
 arguments=parse_arguments()
 if arguments.num < 1:
-    print "The number to factor must be a positive integer"
+    print("The number to factor must be a positive integer")
     exit(-4)
 if arguments.addtest:#If we are adding a new test case 
     test_cases=read_test_cases(arguments.addtest) #Load or create a dictionary of test cases
     if str(arguments.num) in test_cases: #If the test case already exists, say so and exit
-        print "Test case",arguments.num,"already present:",arguments.num,"=",test_cases[str(arguments.num)]
+        print("Test case",arguments.num,"already present:",arguments.num,"=",test_cases[str(arguments.num)])
         exit(2)
 elif arguments.runtest: #If running the test cases
     run_test_cases(arguments.runtest)
@@ -173,23 +172,23 @@ try:
     factors=factorize(arguments.num)
 except KeyboardInterrupt:
     t_end=time.time()
-    print "Time used",round(t_end-t_start,4),"seconds"
+    print("Time used",round(t_end-t_start,4),"seconds")
     exit(3)
 t_end=time.time()
 
 if len(factors)== 1 or validate_factors(arguments.num,factors): #If there's only one factor or they multiply to the orignal number
-    print "Factors of",arguments.num,"=",factors,
-    if arguments.verbose: print "In",round(t_end-t_start,4),"seconds"
+    print("Factors of",arguments.num,"=",factors, end=" " if arguments.verbose else "\n")
+    if arguments.verbose: print("In",round(t_end-t_start,4),"seconds")
     if arguments.addtest:#Save the test case if requested and it has not been saved before
         test_cases[arguments.num]=factors
         try:
             f_out=open(arguments.addtest,"w")
         except:
-            print "Could not open file",arguments.addtest,"to write"
+            print("Could not open file",arguments.addtest,"to write")
             exit(-3)
         f_out.write(json.dumps(test_cases))
         f_out.close()
     exit(0)
 else:
-    print "The result is wrong, multiplying",factors,"doesn't yield",arguments.num
+    print("The result is wrong, multiplying",factors,"doesn't yield",arguments.num)
     exit(-1)
