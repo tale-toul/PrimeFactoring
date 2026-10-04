@@ -160,11 +160,12 @@ Generacion automática de casos de prueba
 Para generar casos de prueba sin necesidad de introducirlos uno a uno voy a usar la
 siguiente orden en una consola:
 
- # for x in {1..500}; do ./PrimeFactor.py --addtest testcases.dat -v $(python -c "import random;print random.randint(1000000,9999999)"); done
+ # for x in {1..500}; do ./PrimeFactor.py --addtest testcases.dat -v $(python3 -c "import random;print(random.randint(1000000,9999999))"); done
 
 Esta orden esta compuesta por un bucle que se ejecutará 500 veces, dentro del bucle se
 ejecuta el programa de factorización, y el número a factorizar es generado por un trozo de
 código python, que genera un número aleatorio dentro del rango que se le indica.
+(Orden actualizada a Python 3: en Python 2 se usaba "python" y "print" sin paréntesis.)
 
 
 
@@ -404,6 +405,12 @@ version, el timpo se ha reducido a la mitad del que se necesito en la version 1.
         >>sys.maxint
         2147483647
 
+    Nota (Python 3): todo lo anterior se refiere a Python 2.  En Python 3 los tipos "int"
+    y "long" se han unificado en un único tipo "int" de precisión ilimitada, el sufijo L ya
+    no existe y sys.maxint ha desaparecido (sys.maxsize no es un límite para los enteros).
+    Ver la sección MIGRACIÓN A PYTHON 3 al final de este documento.
+    https://docs.python.org/3/library/stdtypes.html#numeric-types-int-float-complex
+
 Nivel NO batido.  Este nivel de momento nos bate a nosotros.
 
 
@@ -578,8 +585,9 @@ Nivel batido.
     factorización sigue pasando lo mismo con este número, si factorizamos el último primo
     (7683479) solo necesita unos 7 segundos, pero el número completo tarda 4 veces más, no
     se a qué se debe esto ya que los primeros factores se encuentran rápido y entonces nos
-    queda el último factor, que ahora tarda mucho más. 
-    
+    queda el último factor, que ahora tarda mucho más.
+    (Ver una posible explicación en la sección MIGRACIÓN A PYTHON 3.)
+
  2-Número compuesto por dos primos
     2803249819 = [36523, 76753] In 0.2087 seconds
 
@@ -605,6 +613,8 @@ el límite de aquellos que se pueden representar internamente con un entero (int
 representados con un tipo de número sin límite que es más lento en el tratamiento, de ahí
 que el incremento a la hora de calcular un número primo en el nivel 10 se haya
 multiplicado, no por 10, sino por 40.
+(Nota: esto es propio de Python 2.  En Python 3 hay un único tipo de entero y este salto
+desaparece, ver la sección MIGRACIÓN A PYTHON 3 al final de este documento.)
 
 En resumen nuestras mejoras no nos han permitido superar ni un solo nivel.  Intentaremos
 corregir este defecto en la versión 1.3 del programa.
@@ -1618,3 +1628,281 @@ Nivel batido.  Con las mejoras introducidas en esta versión 2.3 el rendimiento 
  
  En lo números de tipo (3) el tiempo de factorización no cambia sustancialmente, ya que
  aquí hay que recorrer todo el espacio de candidatos.
+
+
+
+
+VERSION 2.3-PYTHON3: MIGRACIÓN A PYTHON 3
+
+El programa estaba escrito originalmente en Python 2 y se ha migrado a Python 3.  La
+lógica del programa no cambia: una fase 1 en la que un único proceso factoriza durante 10
+segundos para medir la velocidad de la máquina; si no termina, una fase 2 en la que el
+resto del espacio de candidatos se divide en segmentos pequeños que se procesan en orden,
+con tantos procesos simultáneos como CPUs, coordinados con un objeto Condition; la
+factorización termina en cuanto un proceso la completa, y si un proceso encuentra factores
+los segmentos siguientes usan el número reducido.
+
+Se ha hecho una migración fiel, con una única corrección: la dependencia del módulo gmpy2
+(ver más abajo).  El resto de problemas detectados NO se han corregido; se describen en
+"Problemas detectados en la versión 2.3".
+
+La cabecera del programa indicaba "#Version 2.3.5"; ahora indica "#Version 2.3-python3".
+
+Ahora el programa se ejecuta con:
+
+    $ python3 PrimeFactor.py <número>
+    $ ./PrimeFactor.py <número>        (la primera línea apunta ahora a python3)
+
+Referencias para Python 3:
+    https://docs.python.org/3/library/multiprocessing.html
+    https://pymotw.com/3/multiprocessing/index.html
+
+
+¿Por qué migrar?
+
+-Python 2 dejó de tener soporte el 1 de enero de 2020: no recibe correcciones de errores
+ni parches de seguridad.
+-Las distribuciones actuales ya no incluyen Python 2.  En el equipo donde se ha hecho la
+migración (Fedora) no existe ningún intérprete python2, así que el programa sencillamente
+no se podía ejecutar.
+-Python 3 simplifica el manejo de enteros: ya no hay dos tipos (int y long) sino uno solo,
+de precisión ilimitada (ver más abajo el misterio del número 6569374545).
+
+
+Cambios realizados en el código
+
+-División entera: "compnum /= candidate" pasa a ser "compnum //= candidate" en los 8
+lugares donde aparece: 7 en "factorize_with_limits" (la función que ejecuta cada proceso)
+y 1 en "factorize_with_factors" (la limpieza de resultados).  En Python 2 el operador "/"
+entre dos enteros devolvía un entero, pero en Python 3 siempre devuelve un número en coma
+flotante (float).  Un float solo representa enteros de forma exacta hasta 2^53 (unas 16
+cifras), así que a partir del nivel 17 los procesos habrían obtenido factores incorrectos
+sin dar ningún error.
+-En factor_broker, el cálculo "groups_of_candidates= remaining_candidates /
+candidates_processed" pasa a usar "//".  En Python 2 era una división entera, y el
+resultado se compara con max_segments; con "/" daría un float y la comparación podría
+cambiar justo en el límite (por ejemplo 100,5 > 100 es cierto, pero 100 > 100 no).  La
+división de la línea siguiente ya usaba float(...) a propósito y no se ha cambiado.
+-La instrucción print pasa a ser la función print(), manteniendo los formatos con "%",
+incluida la línea comentada de depuración de "signal_show_current_status".  La línea que
+terminaba en coma ("Factors of N = [...]",) usa ahora end=" " cuando se activa -v, para
+que el tiempo siga apareciendo en la misma línea.  Todos los mensajes de depuración que se
+muestran sin -v se mantienen.
+-raw_input() pasa a ser input().
+-Ordenación de los casos de prueba: en Python 3 dict.keys() ya no devuelve una lista, así
+que "test_cases.keys().sort(key=int)" se sustituye por "sorted(test_cases.keys(), key=int)".
+-La primera línea del programa (shebang) pasa a ser "#!/usr/bin/env python3".
+-La cabecera del programa indica ahora la nueva versión: "#Version 2.3-python3".
+-Se añade multiprocessing.set_start_method('fork') al principio del programa principal
+(ver "Método de inicio de procesos").
+-El programa de pruebas MultiPCond_test.py (que no usa el programa principal) también se
+ha migrado: la primera línea apunta a python3 y las instrucciones print pasan a ser la
+función print().
+-El análisis de la línea de comandos sigue usando el módulo estándar argparse, que no
+necesita cambios.  Documentación de argparse para Python 3:
+https://docs.python.org/3/howto/argparse.html
+
+En las salidas del programa ya no aparece el sufijo L (por ejemplo [3569874547L] pasa a
+ser [3569874547]), ya que en Python 3 no existe el tipo long.
+
+
+gmpy2: alternativa en Python puro (la única corrección)
+
+En la versión 2.3 la función validate_factors comprueba que todos los factores sean
+primos con gmpy2.is_prime.  El módulo gmpy2 no está instalado para Python 3 en el equipo
+de la migración, así que el programa fallaba nada más arrancar, al hacer "import gmpy2".
+
+La corrección mantiene gmpy2 cuando está instalado y, si no lo está, usa una función
+is_prime escrita en Python puro:
+
+    try:
+        from gmpy2 import is_prime #Primality test from the gmpy2 module, when it is installed
+    except ImportError: #gmpy2 not available: pure python deterministic Miller-Rabin test
+        def is_prime(n):
+            ...
+
+y en validate_factors "gmpy2.is_prime(item)" pasa a ser "is_prime(item)".
+
+La función alternativa usa el test de Miller-Rabin.  La división por tentativa (probar
+divisores hasta la raíz cuadrada, como hace el propio programa) sería demasiado lenta: un
+factor de 20 cifras obligaría a probar hasta unos 10^10 divisores.  Miller-Rabin hace en
+cambio unas pocas exponenciaciones modulares con la función pow(a, d, n) de Python, que
+son muy rápidas incluso con números enormes.  En general Miller-Rabin es un test
+probabilístico, pero se sabe que usando como "testigos" los 13 primeros primos (del 2 al
+41) el resultado es exacto para cualquier número menor que 3,3 * 10^24 (24 cifras).  Este
+programa trabaja como mucho con números de 20 cifras (nivel 20), así que dentro de su
+rango la comprobación es exacta.  Por comparación, gmpy2.is_prime también es un test
+probabilístico.  Cada llamada tarda microsegundos y la validación solo se hace una vez por
+factorización, así que no afecta al rendimiento.
+
+Comprobaciones realizadas: la función coincide con la división por tentativa para todos
+los números menores que 100000, e identifica correctamente los primos y compuestos de este
+documento (por ejemplo 5332147896211517, 55641397544639089, 5977455832169755667 y
+52369844786321568503 son primos; 303 y 12959102468953189 no lo son).  La rama que usa gmpy2
+no se ha podido probar, porque el módulo no está instalado.
+
+Si se quiere usar gmpy2, se puede instalar con:
+
+    $ sudo dnf install python3-gmpy2        (Fedora)
+    $ pip install gmpy2
+
+
+Método de inicio de procesos (fork)
+
+En Linux, Python 2 siempre creaba los procesos nuevos con "fork": el proceso hijo es una
+copia exacta del padre, incluidas sus variables globales.  A partir de Python 3.14 el
+método por defecto en Linux ha pasado a ser "forkserver", que no copia el proceso
+principal.  En esta versión "fork" es imprescindible: la función que atiende la señal
+USR1 en los procesos de factorización (signal_show_current_status) usa la variable global
+t_start, que solo existe en el proceso hijo porque se ha copiado del padre, y la fase 1
+siempre usa esa señal cuando la factorización dura más de 10 segundos.  En la versión 2.2
+se comprobó que sin "fork" la función de la señal falla con "NameError: name 't_start' is
+not defined" y el programa se queda esperando para siempre.  Por eso se añade al principio
+del programa principal:
+
+    multiprocessing.set_start_method('fork')
+
+
+Una posible explicación al misterio del número 6569374545
+
+En las pruebas del nivel 10 (versiones 1.1 y 1.2) vimos que 6569374545 = [3, 3, 5, 19,
+7683479] tardaba unas 4 veces más que factorizar su último factor (7683479) por separado.
+La explicación más probable está en los tipos de Python 2: 6569374545 es mayor que
+sys.maxint (2147483647), así que se almacena como "long", y al dividir un long entre un int
+Python 2 devuelve siempre un long, aunque el resultado quepa en un int.  Por lo tanto el
+número que queda (7683479) sigue siendo un long, y todas las operaciones de la búsqueda se
+hacen con aritmética de long, mucho más lenta.  El sufijo L que aparece en las pruebas de
+la versión 1.3 (7683479L) confirma que el número seguía siendo un long después de las
+divisiones.  No he podido confirmarlo ejecutando Python 2, porque ya no está instalado.
+Con Python 3 este efecto desaparece, ya que solo hay un tipo de entero.
+
+Las tablas de tiempos de las versiones anteriores se obtuvieron con Python 2 en una
+Raspberry Pi modelo B y en una Raspberry Pi 3, y no se han vuelto a medir.
+
+
+Problemas detectados en la versión 2.3 (no corregidos)
+
+1-Error IndexError y bloqueo del programa en la fase 2 (el más grave).
+  Cada vez que el proceso principal se despierta calcula los huecos libres como
+  "slots = num_cpus - len(running_processes)" y lanza un proceso por hueco con
+  "segments.pop(0)", sin comprobar si quedan tantos segmentos.  Si terminan a la vez más
+  procesos que segmentos quedan, la lista se vacía y el programa falla con:
+
+    IndexError: pop from empty list
+
+  La versión 2.3 ya corregía esto al calcular los huecos la primera vez
+  (slots=min(num_cpus,len(segments))), pero no al recalcularlos.  Peor aún, el programa no
+  termina: el proceso principal falla teniendo adquirido el Lock del objeto Condition,
+  Python espera al salir a que terminen los procesos de factorización, y estos o fallan al
+  no poder conectar con el Manager o se quedan esperando el Lock de la Condition para
+  siempre.  El fallo depende de cuántos procesos terminen a la vez:
+  -Con el primo del nivel 19 (5977455832169755667) y 12 CPUs, la versión migrada se quedó
+   bloqueada en las 3 ejecuciones (29 ó 30 segmentos).  En una copia de prueba con la
+   misma lógica sí terminó una vez, en 92,8 segundos con 22 segmentos.
+  -Se puede reproducir con 12 segmentos muy pequeños seguidos de uno grande, de modo que
+   los 12 primeros procesos terminan casi a la vez y solo queda un segmento: falló en 2 de
+   3 intentos (12 CPUs):
+
+    $ ./PrimeFactor.py -v 5332147896211517 --segments 2 101 102 201 202 301 302 401 402 501 502 601 602 701 702 801 802 901 902 1001 1002 1101 1102 1201 1202 2000000
+
+  La lógica es la misma que en Python 2, así que el error también existía en la versión
+  original; con 4 CPUs (como en el RPi 3) es menos probable que terminen tantos procesos a
+  la vez.
+
+2-La fase 1 dura 10 segundos fijos y el reparto en segmentos limita el paralelismo.
+  Cualquier número que no se factorice en 10 segundos tarda al menos unos 20, porque el
+  tamaño de cada segmento es "lo que un proceso hace en 10 segundos".  Por ejemplo el
+  primo del nivel 17 (55641397544639089): tras la fase 1 solo quedaba trabajo para 2
+  segmentos, así que solo se usaron 2 de las 12 CPUs y tardó 20,7 segundos, frente a 4,1
+  segundos de la versión 2.2-python3 y 19,7 de la versión 1.3-python3 (un solo proceso).
+  En una máquina rápida los números medianos son más lentos que en la versión 2.2.
+
+3-Los ejemplos de -c y -l de la sección FACTORIZACION POR SECTORES ahora terminan en
+  error.  La nueva comprobación de primos rechaza los factores no primos que esa sección
+  describe como un resultado esperado:
+
+    $ ./PrimeFactor.py 3644792236778694 -c 120
+    303 is not prime
+    The result is wrong, multiplying [303, 42473, 283215626] doesn't yield 3644792236778694
+    Or some factor is not prime
+
+  y lo mismo con "64795512344765945 -c 4 -l 2" (12959102468953189 is not prime).  En
+  ambos casos el programa sale con el código -1.
+
+4-CTRL-C ya no sale con el código 3.  El tratamiento de KeyboardInterrupt muestra el
+  tiempo usado y hace "raise" antes de "exit(3)", así que exit(3) nunca se ejecuta: el
+  programa muestra el error KeyboardInterrupt y termina por la propia señal.
+
+5-La opción -l se ignora en la fase 2: los segmentos llegan hasta la raíz cuadrada del
+  número.  Con "-v 5977455832169755667 -l 1500000000" la fase 2 calcula "Last possible
+  candidate: 2444883603" y 29 segmentos.
+
+6-Cada vez que se despierta, el proceso principal hace "join(0.08)" sobre todos los
+  procesos en ejecución, lo que con 12 procesos supone hasta casi un segundo de espera por
+  cada despertar.
+
+7-Otros problemas menores:
+  -Mensajes de depuración que se muestran siempre, aunque no se use -v ("Woken up at",
+   "Process ... is finished", "Mission accomplished!", "killing ...").
+  -No se comprueba que los valores de --segments tengan sentido.
+  -Error que viene de la versión 1.3: si "--addtest" no puede abrir el fichero para
+   escribir, el programa llama a f_out.close() sobre un fichero que nunca se llegó a
+   abrir.
+  -"factorize_with_factors" no comprueba si se ha quedado sin candidatos (viene de la
+   versión 2.1).
+
+
+¿Por qué la batería de pruebas no prueba la versión 2.3?
+
+Todos los números de la batería de pruebas (como mucho de 9 cifras) se factorizan en
+menos de 10 segundos, es decir, dentro de la fase 1, con un único proceso de
+factorización.  En la batería completa no se ha llegado a la fase 2 ni una sola vez
+(ningún mensaje "Woken up").  Por eso:
+
+-La batería tarda lo mismo con 12 que con 4 CPUs (96 y 101 segundos), ya que el número de
+ CPUs solo se usa en la fase 2.
+-Es más rápida que con la versión 2.2 (225 y 794 segundos), porque por cada número solo se
+ crea el Manager y un proceso, en lugar de un proceso con su lista, Namespace, Lock y
+ Event por cada CPU.
+-Sigue siendo mucho más lenta que la versión 1.3 (0,3 segundos), por ese coste fijo.
+-La parte nueva de esta versión, la fase 2, no queda probada por la batería, y es
+ precisamente donde está el error del punto 1.
+
+Comparación con números grandes, en este PC con 12 CPUs:
+
+                                          1.3-python3   2.2-python3   2.3-python3
+    Nivel 17 (3) 55641397544639089         19,7 s        4,1 s         20,7 s (2 segmentos)
+    Nivel 19 (1) 3689445781236985154       0,009 s       0,35 s        0,15 s (fase 1)
+    Nivel 19 (3) 5977455832169755667       -             81,6 s        bloqueado (punto 1)
+
+
+Informe de validación de la migración
+
+Todas las pruebas se han hecho en un PC actual con 12 CPUs, no en la Raspberry Pi de
+referencia, y sin gmpy2 (usando la función alternativa is_prime).
+
+-Batería de pruebas completa: "--runtest testcases.dat" con los 1837 casos de prueba,
+todos superados (1837 "Passed", ningún "FAILED test", ningún error), con 12 procesos (96
+segundos) y forzando 4 procesos en una copia temporal del programa (101 segundos).
+-Factorizaciones sueltas: 30 = [2, 3, 5], 98 = [2, 7, 7], 1690 = [2, 5, 13, 13] y
+5577944 = [2, 2, 2, 19, 36697].
+-Fase 2: el primo del nivel 17 se factoriza correctamente en 20,7 segundos; el primo del
+nivel 19 se bloquea (ver "Problemas detectados", punto 1).
+-Opciones -c y -l: terminan con el mensaje de factor no primo y el código -1, igual que
+en la versión original (punto 3).
+-Errores de la línea de comandos: un número negativo, "-c 1" y "-l 1" se rechazan con los
+mismos códigos de salida que antes (-4, -5 y -6).
+-CTRL-C: muestra el tiempo usado y termina por la señal, como en la versión original
+(punto 4); no quedan procesos vivos.
+-"--addtest": añade un caso nuevo y rechaza uno repetido con código de salida 2.  Probado
+sobre una copia de testcases.dat, el fichero original no se ha modificado.
+-MultiPCond_test.py se ejecuta completo hasta el mensaje "The End".
+
+
+Pendiente
+
+-TODO.txt todavía enlaza a la documentación de argparse de Python 2
+(https://docs.python.org/2/howto/argparse.html); la referencia correcta para Python 3 es
+https://docs.python.org/3/howto/argparse.html
+-Los problemas descritos en "Problemas detectados en la versión 2.3", que no se han
+corregido en esta migración.  El más urgente es el punto 1.

@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-#Version 2.3.5
+#Version 2.3-python3
 
 import sys
 import time
@@ -12,7 +12,24 @@ import inspect
 import math
 import multiprocessing
 from multiprocessing import Process,Manager,Lock,Event,Condition
-import gmpy2
+try:
+    from gmpy2 import is_prime #Primality test from the gmpy2 module, when it is installed
+except ImportError: #gmpy2 not available: pure python deterministic Miller-Rabin test
+    def is_prime(n):
+        '''Deterministic Miller-Rabin primality test, exact for n < 3.3e24'''
+        if n < 2: return False
+        for p in (2,3,5,7,11,13,17,19,23,29,31,37,41):
+            if n % p == 0: return n == p
+        d, s = n-1, 0
+        while d % 2 == 0: d //= 2; s += 1
+        for a in (2,3,5,7,11,13,17,19,23,29,31,37,41):
+            x = pow(a, d, n)
+            if x in (1, n-1): continue
+            for _ in range(s-1):
+                x = x*x % n
+                if x == n-1: break
+            else: return False
+        return True
 #import pdb
 
 factors=list() #List of number's found factors
@@ -26,10 +43,10 @@ segments=list()
 def validate_factors(num,factors):
     partial_result=1
     for item in factors:
-        if gmpy2.is_prime(item):
+        if is_prime(item):
             partial_result *= item
         else:
-            print "%d is not prime" % (item,)
+            print("%d is not prime" % (item,))
             return False
     return True if partial_result == num else False # Ternary expression
 
@@ -72,7 +89,7 @@ def factorize_with_limits(compnum,own_results,nms,loc,event,cond,candidate=2,las
         while compnum%candidate == 0:  #Candidate = 2, consider it as a special case
             loc.acquire()
             own_results.append(candidate)
-            compnum /= candidate
+            compnum //= candidate
             max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
             loc.release()
         candidate += 1 #Now candidate equals 3
@@ -80,7 +97,7 @@ def factorize_with_limits(compnum,own_results,nms,loc,event,cond,candidate=2,las
         while compnum%candidate == 0:
             loc.acquire()
             own_results.append(candidate)
-            compnum /= candidate
+            compnum //= candidate
             max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
             loc.release()
         candidate += 2 #Now candidate equals 5
@@ -89,7 +106,7 @@ def factorize_with_limits(compnum,own_results,nms,loc,event,cond,candidate=2,las
         while compnum%candidate == 0:
             loc.acquire()
             own_results.append(candidate)
-            compnum /= candidate
+            compnum //= candidate
             max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
             loc.release()
         candidate += 2 #Now candidate equals 7
@@ -98,28 +115,28 @@ def factorize_with_limits(compnum,own_results,nms,loc,event,cond,candidate=2,las
         while compnum%candidate == 0: # For candidates ending in 7
             loc.acquire()
             own_results.append(candidate)
-            compnum /= candidate
+            compnum //= candidate
             max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
             loc.release()
         candidate += increment[0] #This increment depends on the incremnet list selected bejore
         while compnum%candidate == 0: #For candidates ending in 9
             loc.acquire()
             own_results.append(candidate)
-            compnum /= candidate
+            compnum //= candidate
             max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
             loc.release()
         candidate += increment[1] #This increment depends on the incremnet list selected bejore
         while compnum%candidate == 0: #For candidates ending in 1
             loc.acquire()
             own_results.append(candidate)
-            compnum /= candidate
+            compnum //= candidate
             max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
             loc.release()
         candidate += increment[2] #This increment depends on the incremnet list selected bejore
         while compnum%candidate == 0: #For candidates ending in 3
             loc.acquire()
             own_results.append(candidate)
-            compnum /= candidate
+            compnum //= candidate
             max_candidate=min(last_candidate,int(math.ceil(math.sqrt(compnum)))) #Square root of the number to factor
             loc.release()
         candidate += increment[3] #This increment depends on the incremnet list selected bejore
@@ -149,7 +166,7 @@ def factorize_with_factors(compnum,possible_factors):
     while candidate <= max_candidate:
         while compnum%candidate == 0: # For candidates ending in 7
             pfactors.append(candidate)
-            compnum /= candidate
+            compnum //= candidate
             max_candidate = int(math.ceil(math.sqrt(compnum))) #Square root of the number to factor
         if order_uniq_pfactors:
             candidate=order_uniq_pfactors.pop() #I'm not checking that the list is empty
@@ -184,7 +201,7 @@ def read_test_cases(file):
         try:
             f_in=open(file)
         except:
-            print "Could not open file",file,"to read"
+            print("Could not open file",file,"to read")
             exit(-2)
         test_serialized=f_in.read()
         test_cases_dict=json.loads(test_serialized)
@@ -201,20 +218,19 @@ def run_test_cases(batch_file):
     count=1 #The case number I'm about to try
     test_cases_size=len(test_cases)
     if test_cases_size > 0: #There are tests to be run
-        Ky=test_cases.keys() #Get a list of the keys (numbers) in the dictionary
-        Ky.sort(key=int) #sort the list numerically
+        Ky=sorted(test_cases.keys(),key=int) #Get a list of the keys (numbers) in the dictionary, sorted numerically
         for case in Ky: #case is a string
-            if arguments.verbose: print case
+            if arguments.verbose: print(case)
             t_start=time.time()
             factors=factor_broker(int(case),2,int(case),[])
             t_end=time.time()
-            if factors == test_cases[case] and arguments.verbose: 
-                print "\t",factors, "Passed in",round(t_end-t_start,4),"seconds.", count,"of", test_cases_size
+            if factors == test_cases[case] and arguments.verbose:
+                print("\t",factors, "Passed in",round(t_end-t_start,4),"seconds.", count,"of", test_cases_size)
             elif factors != test_cases[case]:
-                print "FAILED test:", case,test_cases[case],"!=",case,factors,"time",round(t_end-t_start,4),"seconds"
-                raw_input("Press any key to continue")
+                print("FAILED test:", case,test_cases[case],"!=",case,factors,"time",round(t_end-t_start,4),"seconds")
+                input("Press any key to continue")
             count +=1
-    else: print "Empty test case batch"
+    else: print("Empty test case batch")
 
 #Parameters: signum.- The signal number used with this function
 #           stack.- The current stack frame 
@@ -225,15 +241,15 @@ def run_test_cases(batch_file):
 #We never call this function, it is called by the signal handler
 def signal_show_current_status(signum,stack):
    (args,varargs,keywords,local_vars)=inspect.getargvalues(stack)
-   print "Received signal %d" % signum
-   #print "local_vars:",local_vars #Dump the local_vars dictionary
+   print("Received signal %d" % signum)
+   #print("local_vars:",local_vars) #Dump the local_vars dictionary
    local_vars['own_results'].append(local_vars['compnum'])
-   print "\tFactors found so far: %s"%local_vars['own_results']
-   print "\tLast candidate tried: %d"%local_vars['candidate']
+   print("\tFactors found so far: %s"%local_vars['own_results'])
+   print("\tLast candidate tried: %d"%local_vars['candidate'])
    local_vars['nms'].last_candidate=local_vars['candidate']
    local_vars['nms'].compnum=local_vars['compnum']
    t_so_far=time.time()
-   print "\tTime used: %.2f" % round(t_so_far-t_start,3),"seconds"
+   print("\tTime used: %.2f" % round(t_so_far-t_start,3),"seconds")
    local_vars['event'].set()
 
 
@@ -306,19 +322,19 @@ def factor_broker(num_to_factor,bottom,top,segments):
             if factor_eng[0][2].compnum: #There might be a new composite number to factor here
                 num_to_factor=factor_eng[0][2].compnum
             candidates_processed= (factor_eng[0][2].last_candidate) - bottom
-            if arguments.verbose: print "Candidates processed in phase 1: %d" % candidates_processed
+            if arguments.verbose: print("Candidates processed in phase 1: %d" % candidates_processed)
             l_candidate=int(math.ceil(math.sqrt(factor_eng[0][2].compnum)))
             remaining_candidates=l_candidate - factor_eng[0][2].last_candidate
-            if arguments.verbose: print "Remaining candidates: %d" % remaining_candidates
-            groups_of_candidates= remaining_candidates / candidates_processed 
+            if arguments.verbose: print("Remaining candidates: %d" % remaining_candidates)
+            groups_of_candidates= remaining_candidates // candidates_processed
             if groups_of_candidates > max_segments:
                 seg_mul_computed=remaining_candidates / float(max_segments*candidates_processed)
                 segment_multiplier=min(max_multiplier,seg_mul_computed)
                 candidates_per_segment=int(math.ceil(segment_multiplier*candidates_processed))
             else:
                 candidates_per_segment=candidates_processed
-            if arguments.verbose: print "Candidates per segment:",candidates_per_segment
-            if arguments.verbose: print "Last possible candidate:", l_candidate
+            if arguments.verbose: print("Candidates per segment:",candidates_per_segment)
+            if arguments.verbose: print("Last possible candidate:", l_candidate)
             segment_low_limit=factor_eng[0][2].last_candidate
             segment_high_limit=min(segment_low_limit + candidates_per_segment,l_candidate) 
             segments.append((segment_low_limit,segment_high_limit))
@@ -326,8 +342,8 @@ def factor_broker(num_to_factor,bottom,top,segments):
                 segment_low_limit = segment_high_limit + 1
                 segment_high_limit=min(segment_low_limit + candidates_per_segment,l_candidate) 
                 segments.append((segment_low_limit,segment_high_limit))
-        if arguments.verbose: print "Factors found in phase 1: %s" % factor_eng[0][0]
-    if arguments.verbose: print "Number of segments: %d" % len(segments)
+        if arguments.verbose: print("Factors found in phase 1: %s" % factor_eng[0][0])
+    if arguments.verbose: print("Number of segments: %d" % len(segments))
     cond.acquire()
     slots=min(num_cpus,len(segments))
     running_processes=list()
@@ -337,20 +353,20 @@ def factor_broker(num_to_factor,bottom,top,segments):
             running_processes.append(factor_eng[-1])
             factor_eng[-1][1].start()
             if arguments.verbose:
-                print "  +Starting process %s in segment %s" % (factor_eng[-1][1].name,factor_eng[-1][5])
+                print("  +Starting process %s in segment %s" % (factor_eng[-1][1].name,factor_eng[-1][5]))
             slots -=1
         cond.wait() #Wait for any of the factoring process to finish
-        print "Woken up at %.2f" % time.time()
+        print("Woken up at %.2f" % time.time())
         temp_proc_list=list()
         for idx,proc in enumerate(running_processes): #Look for the finished process
             proc[1].join(0.08)
             proc[3].acquire()
             if proc[2].end_of_process: #The process has finished factoring
-                print "  -Process %s is finished, with factors %s in segment %s:" % (proc[1].name,proc[0],proc[5])
+                print("  -Process %s is finished, with factors %s in segment %s:" % (proc[1].name,proc[0],proc[5]))
                 if proc[2].mis_acomplish: #No more factoring above this segment
-                    print "\tMission accomplished!"
+                    print("\tMission accomplished!")
                     for dying_process in running_processes[idx+1:]: #Kill the remaining running processes
-                        print "killing %s" % dying_process[1].name
+                        print("killing %s" % dying_process[1].name)
                         dying_process[1].terminate()
                     for seg_idx,segment in enumerate(segments): #Remove the remaining segments above this one
                         if segment[0] > proc[5][1]: 
@@ -367,7 +383,7 @@ def factor_broker(num_to_factor,bottom,top,segments):
     cond.release()
     for last_proc in running_processes:
         last_proc[1].join()
-        print "\tProcess is finished:",last_proc[1].name,last_proc[0],last_proc[5]
+        print("\tProcess is finished:",last_proc[1].name,last_proc[0],last_proc[5])
     for r in factor_eng: #Collect the factors found in each segment
         results_dirty.append(r[0][:]) #Get the results from every process
     return clean_results(results_dirty,orig_num_to_factor)
@@ -394,22 +410,23 @@ def create_process(num_to_factor,manager,cond,segment):
 #pdb.set_trace()  #Uncomment to debug
 
 if __name__ == '__main__':
+    multiprocessing.set_start_method('fork') #Python 3.14+ no longer uses fork by default on Linux; the processes need the inherited globals (t_start)
     arguments=parse_arguments()
     if arguments.num < 1:
-        print "The number to factor must be a positive integer"
+        print("The number to factor must be a positive integer")
         exit(-4)
     if arguments.firstcandi is not None:#An initial candidate has been assigned via the command line
         if arguments.firstcandi >= 2:
             candidate=arguments.firstcandi
         else:
-            print "The first posible candidate must be at least 2, you have entered",arguments.firstcandi
+            print("The first posible candidate must be at least 2, you have entered",arguments.firstcandi)
             exit(-5)
     else: arguments.firstcandi = 2 #Default value
     if arguments.lastcandi is not None: #A last candidate has been assigned via the command line
         if arguments.lastcandi >= 2:
             last_candidate=arguments.lastcandi
         else:
-            print "The last posible andidate must be at least 2, you have entered",arguments.lastcandi
+            print("The last posible andidate must be at least 2, you have entered",arguments.lastcandi)
             exit(-6)
     else: arguments.lastcandi = arguments.num
     if arguments.runtest: #If running the test cases
@@ -423,35 +440,35 @@ if __name__ == '__main__':
         if arguments.addtest:#Save the test case if requested and it has not been saved before
             test_cases=read_test_cases(arguments.addtest) #Load or create a dictionary of test cases
             if str(arguments.num) in test_cases: #If the test case already exists, say so and exit
-                print "Test case",arguments.num,"already present:",arguments.num,"=",test_cases[str(arguments.num)]
+                print("Test case",arguments.num,"already present:",arguments.num,"=",test_cases[str(arguments.num)])
                 exit(2)
         if arguments.verbose:
-            print "+Number to factor=%d" % arguments.num
+            print("+Number to factor=%d" % arguments.num)
         t_start=time.time()
         try:
             factors=factor_broker(arguments.num,arguments.firstcandi,arguments.lastcandi,segments)
         except KeyboardInterrupt:
             t_end=time.time()
-            print "Time used",round(t_end-t_start,4),"seconds"
+            print("Time used",round(t_end-t_start,4),"seconds")
             raise
             exit(3)
         t_end=time.time()
 
         if len(factors)== 1 or validate_factors(arguments.num,factors): #If there's only one factor or they multiply to the orignal number
-            print "Factors of",arguments.num,"=",factors,
-            if arguments.verbose: print "In",round(t_end-t_start,4),"seconds"
+            print("Factors of",arguments.num,"=",factors, end=" " if arguments.verbose else "\n")
+            if arguments.verbose: print("In",round(t_end-t_start,4),"seconds")
             if arguments.addtest:#Save the test case
                 test_cases[arguments.num]=factors
                 try:
                     f_out=open(arguments.addtest,"w")
                 except:
-                    print "Could not open file",arguments.addtest,"to write"
+                    print("Could not open file",arguments.addtest,"to write")
                     f_out.close()
                     exit(-3)
                 f_out.write(json.dumps(test_cases))
                 f_out.close()
             exit(0)
         else:
-            print "The result is wrong, multiplying",factors,"doesn't yield",arguments.num
-            print "Or some factor is not prime"
+            print("The result is wrong, multiplying",factors,"doesn't yield",arguments.num)
+            print("Or some factor is not prime")
             exit(-1)
