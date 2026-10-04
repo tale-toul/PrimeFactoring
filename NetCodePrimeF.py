@@ -1,11 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from twisted.internet import reactor,defer
 from twisted.internet.protocol import Protocol,Factory
 from twisted.internet.task import LoopingCall
 from twisted.protocols import basic
 import datetime
-import md5
+import hashlib #The md5 module does not exist in python 3
 from multiprocessing import Queue
 import pickle
 import NetJob
@@ -30,48 +30,49 @@ class PFServerProtocol(basic.LineReceiver):
     lpc_fetch_jobs=None #Looping Call to look for jobs in the job queue
 
     def connectionLost(self,reason):
-        print "Conection closed with %s with message: %s" % (self.transport.getPeer().host,reason.getErrorMessage())
+        print("Conection closed with %s with message: %s" % (self.transport.getPeer().host,reason.getErrorMessage()))
 
     def connectionMade(self):
         self.peer=self.transport.getPeer()
-        print "Connection received from host %s port %d" % (self.peer.host,self.peer.port)
-        self.sendLine("READY TO ACCEPT REQUESTS:")
+        print("Connection received from host %s port %d" % (self.peer.host,self.peer.port))
+        self.sendLine(b"READY TO ACCEPT REQUESTS:")
 
     def lineReceived(self,line):
+        line=line.decode("latin-1") #Twisted delivers bytes in python 3; latin-1 maps every byte to one character, so pickles survive
         proto_msg=line.split(':',1)
         if len(proto_msg) == 2:
             next_step_proto=self.messages.get(proto_msg[0].strip(),'unknown_message')
             getattr(self,next_step_proto)(proto_msg[1].strip())
         else:
-            print "Unkknow message %s" % line
+            print("Unkknow message %s" % line)
             self.unknown_message(line)
             self.transport.loseConnection()
 
     def unknown_message(self,message):
-        self.transport.write("UNKNOWN REQUEST: %s\r\n" % message)
+        self.transport.write(("UNKNOWN REQUEST: %s\r\n" % message).encode("latin-1"))
         self.transport.loseConnection()
 
     def register(self,message):
         reg_time=datetime.datetime.now()
-        reg_md5=md5.new(str(self.peer.host) + str(reg_time)).hexdigest()
-        print "Registering client from: %s at %s with MD5: %s" % (self.peer.host,reg_time,reg_md5)
+        reg_md5=hashlib.md5((str(self.peer.host) + str(reg_time)).encode()).hexdigest()
+        print("Registering client from: %s at %s with MD5: %s" % (self.peer.host,reg_time,reg_md5))
         if self.factory.reg_client(self.peer.host,reg_md5,reg_time):
-            self.transport.write("REGISTERED:%s\r\n" % reg_md5)
-            print "Client registered"
+            self.transport.write(("REGISTERED:%s\r\n" % reg_md5).encode("latin-1"))
+            print("Client registered")
 
     #Parameters: clientID.- The md5 id assigned to the client when it previously
     #                   registered. The protocol expects this ID to be the only component
     #                   of the message after the colom
     def serve_request(self,clientID):
         '''Run when the "REQUEST JOB" protocol command is received from the client'''
-        print "Host %s (%s) requesting job" % (self.peer.host,clientID)
+        print("Host %s (%s) requesting job" % (self.peer.host,clientID))
         if clientID in self.factory.registered_clients: #Place job request in queue
             request=NetJob.NetJob(clientID,'REQUEST')
             self.factory.request_queue.put(request)
-            print "Request sent to parent, waiting for response"
+            print("Request sent to parent, waiting for response")
             self.wait_for_job(clientID)
         else:
-            print "Client not registered"
+            print("Client not registered")
             self.transport.loseConnection()
 
     def wait_for_job(self,clientID):
@@ -94,24 +95,24 @@ class PFServerProtocol(basic.LineReceiver):
             raise Exception('Could not get job from parent, timeout')
 
     def job_found(self,result):
-        print "Job received from parent, sending to client: %s" % self.job_retreived
+        print("Job received from parent, sending to client: %s" % self.job_retreived)
         pickled_job=pickle.dumps(self.job_retreived,pickle.HIGHEST_PROTOCOL )
-        self.transport.write("JOB SEGMENT:%s\r\n" % pickled_job)
+        self.transport.write(("JOB SEGMENT:%s\r\n" % pickled_job.decode("latin-1")).encode("latin-1"))
 
     def job_not_found(self,failure):
         fmsg=failure.getErrorMessage()
-        print fmsg
-        self.transport.write("REQUEST TIMEOUT:fmsg\r\n")
+        print(fmsg)
+        self.transport.write(b"REQUEST TIMEOUT:fmsg\r\n")
         self.transport.loseConnection()
 
     def receive_results(self,pickle_job):
         '''Receive the results from a client.  The client must be already registered and
             the job must have been previously assigned '''
-        self.job_result=pickle.loads(pickle_job) #Get the NetJob back from pickle form
+        self.job_result=pickle.loads(pickle_job.encode("latin-1")) #Get the NetJob back from pickle form
         if self.job_result.worker_ID in self.factory.registered_clients: #Place job request in queue
 #@I should also check that the result correponds with a previous request@#
             self.factory.result_queue.put(self.job_result)
-            print "Results sent to parent, waiting for ACK"
+            print("Results sent to parent, waiting for ACK")
             self.wait_for_job(self.job_result.worker_ID)
 
 
@@ -122,7 +123,7 @@ class PFServerProtocol(basic.LineReceiver):
         if self.transport.getPeer().host == '127.0.0.1':
             reactor.stop()
         else:
-            print self.transport.getPeer()
+            print(self.transport.getPeer())
 
 
 #Factory class
@@ -175,9 +176,9 @@ def server_netcode(request_queue,result_queue,job_queue):
     '''this is the main function in this package, starts the twisted reactor, opens the
     sockets to listen to incoming connections, serves requests, etc.'''
     factory=PFServerProtocolFactory(request_queue,result_queue,job_queue)
-    print "[%s] Starting server in port %d" % (datetime.datetime.now(),external_port)
+    print("[%s] Starting server in port %d" % (datetime.datetime.now(),external_port))
     reactor.listenTCP(external_port,factory)
-    print "[%s] Starting server in port %d and interface localhost" % (datetime.datetime.now(),internal_port)
+    print("[%s] Starting server in port %d and interface localhost" % (datetime.datetime.now(),internal_port))
     reactor.listenTCP(internal_port,factory,interface='localhost')
     reactor.run()
 
