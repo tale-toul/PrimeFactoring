@@ -176,12 +176,13 @@ Definiremos varios parametros importantes:
 Para generar casos de prueba sin necesidad de introducirlos uno a uno voy a usar la
 siguiente orden en una consola:
 
-`# for x in {1..500}; do ./PrimeFactor.py --addtest testcases.dat -v $(python -c "import
-random;print random.randint(1000000,9999999)"); done`
+`# for x in {1..500}; do ./PrimeFactor.py --addtest testcases.dat -v $(python3 -c "import
+random;print(random.randint(1000000,9999999))"); done`
 
 Esta orden esta compuesta por un bucle que se ejecutará 500 veces, dentro del bucle se
 ejecuta el programa de factorización, y el número a factorizar es generado por un trozo de
 código python, que genera un número aleatorio dentro del rango que se le indica.
+(Orden actualizada a Python 3: en Python 2 se usaba "python" y "print" sin paréntesis.)
 
 
 
@@ -420,6 +421,12 @@ version, el timpo se ha reducido a la mitad del que se necesito en la version 1.
         >>sys.maxint
         2147483647
 
+    Nota (Python 3): todo lo anterior se refiere a Python 2.  En Python 3 los tipos "int"
+    y "long" se han unificado en un único tipo "int" de precisión ilimitada, el sufijo L ya
+    no existe y sys.maxint ha desaparecido (sys.maxsize no es un límite para los enteros).
+    Ver la sección MIGRACIÓN A PYTHON 3 al final de este documento.
+    https://docs.python.org/3/library/stdtypes.html#numeric-types-int-float-complex
+
 Nivel NO batido.  Este nivel de momento nos bate a nosotros.
 
 
@@ -595,6 +602,7 @@ Nivel batido.
     (7683479) solo necesita unos 7 segundos, pero el número completo tarda 4 veces más, no
     se a qué se debe esto ya que los primeros factores se encuentran rápido y entonces nos
     queda el último factor, que ahora tarda mucho más. 
+    (Ver una posible explicación en la sección MIGRACIÓN A PYTHON 3.)
     
  2-Número compuesto por dos primos
     2803249819 = [36523, 76753] In 0.2087 seconds
@@ -621,6 +629,8 @@ el límite de aquellos que se pueden representar internamente con un entero (int
 representados con un tipo de número sin límite que es más lento en el tratamiento, de ahí
 que el incremento a la hora de calcular un número primo en el nivel 10 se haya
 multiplicado, no por 10, sino por 40.
+(Nota: esto es propio de Python 2.  En Python 3 hay un único tipo de entero y este salto
+desaparece, ver la sección MIGRACIÓN A PYTHON 3 al final de este documento.)
 
 En resumen nuestras mejoras no nos han permitido superar ni un solo nivel.  Intentaremos
 corregir este defecto en la versión 1.3 del programa.
@@ -1845,5 +1855,304 @@ El cliente no soportará opciones como:
 + Segmento dentro del cual buscar los factores; lo recibirá del servidor
 + Generar casos de prueba
 + Ejecutar casos de prueba
+
+
+
+### VERSION 3.0.1-PYTHON3: MIGRACIÓN A PYTHON 3
+
+El programa estaba escrito originalmente en Python 2 y se ha migrado a Python 3: el
+programa principal (`PrimeFactor.py`), el código de red del servidor
+(`NetCodePrimeF.py`), el cliente de red (`FactorClient.py`), la clase de los trabajos
+(`NetJob.py`) y el programa de pruebas `MultiPCond_test.py`.  Además, los ficheros
+`Dockerfile` y `Dockerfile_centos` se han actualizado para usar una imagen base Red Hat
+UBI 9 con Python 3.12.
+
+La lógica no cambia respecto a la versión 3.0.1: fase 1, fase general con segmentos
+aleatorios y, si el tiempo estimado supera los 70 segundos, un proceso servidor de red
+(Twisted) en el puerto 8000 que reparte segmentos a los clientes `FactorClient.py`.  Las
+novedades de la versión 3.0.1 respecto a la 3.0 se mantienen: el cliente genera su propio
+identificador, cada trabajo tiene un identificador propio, el servidor ignora peticiones
+repetidas y el tiempo de espera (`-t`, por defecto 10 segundos) lo controla el cliente.
+
+Se ha hecho una migración fiel, con una única corrección: la dependencia del módulo gmpy2
+(ver más abajo).  El servidor de red sigue escuchando en todas las interfaces y sigue
+usando pickle (ver el aviso de seguridad en "Problemas detectados en la versión 3.0.1"),
+y el resto de problemas detectados tampoco se han corregido.
+
+La cabecera de `PrimeFactor.py` seguía indicando `#Version 2.4.3`; ahora indica
+`#Version 3.0.1-python3`.
+
+Ahora los programas se ejecutan con:
+
+```
+$ python3 PrimeFactor.py <número>
+$ python3 FactorClient.py [-v] [-i <servidor>] [-t <segundos>] 8000
+```
+
+Dependencias para Python 3:
+
++ Twisted (obligatorio, `PrimeFactor.py` importa el código de red al arrancar):
+  `sudo dnf install python3-twisted` o `pip install twisted`.
++ gmpy2 (opcional): `sudo dnf install python3-gmpy2` o `pip install gmpy2`.
+
+
+#### ¿Por qué migrar?
+
++ Python 2 dejó de tener soporte el 1 de enero de 2020: no recibe correcciones de errores
+  ni parches de seguridad.
++ Las distribuciones actuales ya no incluyen Python 2.  En el equipo donde se ha hecho la
+  migración (Fedora) no existe ningún intérprete python2, así que el programa
+  sencillamente no se podía ejecutar.
++ Las versiones actuales de Twisted solo funcionan con Python 3.
++ Las imágenes base de los Dockerfile (`python:2.7` y CentOS 7) ya no reciben
+  actualizaciones.
++ Python 3 simplifica el manejo de enteros: ya no hay dos tipos (int y long) sino uno
+  solo, de precisión ilimitada (ver más abajo el misterio del número 6569374545).
+
+
+#### Cambios realizados en el código
+
+En `PrimeFactor.py`, los mismos cambios que en la versión 3.0-python3:
+
++ División entera: `compnum /= candidate` pasa a ser `compnum //= candidate` en
+  `update_resnum` y en `factorize_with_factors`, y `groups_of_candidates` se calcula con
+  `//`.  En Python 3 el operador `/` siempre devuelve un float, que solo representa
+  enteros de forma exacta hasta 2^53 (unas 16 cifras); a partir del nivel 17 se
+  obtendrían factores incorrectos sin ningún error.
++ `print` pasa a ser la función `print()`; `raw_input()` pasa a ser `input()`;
+  `test_cases.keys().sort(key=int)` pasa a ser `sorted(test_cases.keys(), key=int)`.
++ Se añade `multiprocessing.set_start_method('fork')` al principio del programa
+  principal: a partir de Python 3.14 el método por defecto en Linux es "forkserver", y
+  la función que atiende la señal USR1 en los procesos de factorización necesita la
+  variable global `t_start` copiada del padre (sin "fork" el programa se queda esperando
+  para siempre, como se comprobó en la versión 2.2).
++ En `finish_daemon`, la orden `STOP REACTOR` se envía como bytes.
++ En la función `tstamp` (nueva en la versión 3.0.1), `ts.microsecond/1000` pasa a ser
+  `ts.microsecond//1000`.
+
+En `NetCodePrimeF.py`, `FactorClient.py` y `NetJob.py`:
+
++ El módulo `md5` ya no existe en Python 3; los identificadores de los clientes y de los
+  trabajos se calculan con `hashlib.md5(...)`.
++ En Python 3 Twisted entrega y envía los mensajes como bytes, no como texto.  Cada línea
+  recibida se convierte a texto con la codificación latin-1, los mensajes se vuelven a
+  convertir a bytes con latin-1 antes de enviarlos, y los objetos serializados con pickle
+  (`pickle.dumps`/`pickle.loads`) se pasan de bytes a texto y viceversa también con
+  latin-1.  Se usa latin-1 porque asigna exactamente un carácter a cada byte, así que los
+  objetos NetJob viajan dentro de las líneas del protocolo byte a byte igual que en
+  Python 2.
++ En `FactorClient.py`, `compnum /= candidate` pasa a ser `compnum //= candidate`, y en
+  las marcas de tiempo `ts.microsecond/1000` pasa a ser `ts.microsecond//1000`.
++ `print` pasa a ser la función `print()`, y la primera línea apunta a python3.
+
+`MultiPCond_test.py` es igual que en las versiones anteriores y se ha migrado igual.
+
+En las salidas del programa ya no aparece el sufijo L (por ejemplo `[3569874547L]` pasa a
+ser `[3569874547]`), ya que en Python 3 no existe el tipo long.
+
+
+#### gmpy2: alternativa en Python puro (la única corrección)
+
+La función `validate_factors` comprueba que todos los factores sean primos con
+`gmpy2.is_prime`.  Si gmpy2 no está instalado el programa fallaba nada más arrancar.  La
+corrección mantiene gmpy2 cuando está instalado y, si no lo está, usa una función
+`is_prime` escrita en Python puro (test de Miller-Rabin determinista):
+
+```
+try:
+    from gmpy2 import is_prime #Primality test from the gmpy2 module, when it is installed
+except ImportError: #gmpy2 not available: pure python deterministic Miller-Rabin test
+    def is_prime(n):
+        ...
+```
+
+y en `validate_factors`, `gmpy2.is_prime(item)` pasa a ser `is_prime(item)`.
+
+Usando como "testigos" los 13 primeros primos (del 2 al 41) el test de Miller-Rabin es
+exacto para cualquier número menor que 3,3 * 10^24, más que suficiente para los números de
+como mucho 20 cifras de este programa; la división por tentativa sería demasiado lenta.
+Cada llamada tarda microsegundos.
+
+En esta versión se han probado las dos ramas: en el PC de la migración gmpy2 no está
+instalado y se usa la función alternativa (que coincide con la división por tentativa para
+todos los números menores que 100000), y en las imágenes de contenedor gmpy2 sí está
+instalado (gmpy2 2.3.2) y se usa `gmpy2.is_prime`.  Los resultados son los mismos.
+
+
+#### Imágenes de contenedor (Dockerfile)
+
+Los dos ficheros Dockerfile usaban imágenes base que ya no reciben actualizaciones
+(`python:2.7` con Debian, y CentOS 7 con el paquete EPEL incluido en el repositorio).  Se
+han actualizado para usar la imagen **Red Hat Universal Base Image (UBI) 9 con Python
+3.12** (`registry.access.redhat.com/ubi9/python-312`), que es de libre distribución:
+
++ `Dockerfile`: imagen del servidor, ejecuta `PrimeFactor.py`.
++ `Dockerfile_centos`: imagen para los clientes, ejecuta `python3` (por ejemplo
+  `FactorClient.py ...`).  Se mantiene el nombre del fichero, aunque ya no usa CentOS.
+
+Cambios respecto a los originales:
+
++ La imagen UBI ya ejecuta las aplicaciones con un usuario sin privilegios (UID 1001)
+  dentro de un entorno virtual de Python, así que ya no hace falta crear un usuario ni
+  ajustar `PYTHONPATH`.  Los programas se copian en `/opt/app-root/src/PrimeFactor/`
+  (servidor) y `/opt/app-root/src/FactorC` (clientes).
++ Twisted y gmpy2 se instalan con `pip`; ya no hacen falta los paquetes del sistema ni
+  el compilador.
++ El fichero `epel-release-latest-7.noarch.rpm` se ha eliminado del repositorio, porque ya
+  no es necesario.
++ `MAINTAINER` está obsoleto; se sustituye por `LABEL maintainer=...`.
+
+Construcción y uso (con podman; con docker es igual):
+
+```
+$ podman build -t primefactor -f Dockerfile .
+$ podman build -t factorclient -f Dockerfile_centos .
+$ podman run --rm primefactor 3644792236778694
+$ podman run --rm -v $PWD/testcases.dat:/data/testcases.dat:ro,Z primefactor --runtest /data/testcases.dat
+$ podman network create factornet
+$ podman run -d --name pfserver --network factornet primefactor <número grande>
+$ podman run -d --network factornet factorclient FactorClient.py -i pfserver -t 60 8000
+```
+
+Las imágenes solo contienen los programas (`*.py`), igual que las originales; para usar
+`--runtest` hay que montar el fichero de casos de prueba.  Dentro de una red de
+contenedores el puerto 8000 del servidor solo es accesible desde los otros contenedores de
+esa red, mientras no se publique con `-p`.  **Publicar el puerto 8000 (`-p 8000:8000`)
+expone el servidor y su problema de seguridad (punto 1 de los problemas detectados).**
+
+Nota: `multiprocessing.cpu_count()` devuelve el número de CPUs del equipo aunque el
+contenedor tenga limitadas las CPUs (comprobado con `podman run --cpus=2`: devuelve 12 en
+un equipo con 12 CPUs), así que el servidor lanza tantos procesos como CPUs tenga el
+equipo.
+
+
+#### Una posible explicación al misterio del número 6569374545
+
+En las pruebas del nivel 10 vimos que 6569374545 = [3, 3, 5, 19, 7683479] tardaba unas 4
+veces más que factorizar 7683479 por separado.  La explicación más probable está en los
+tipos de Python 2: 6569374545 es mayor que sys.maxint, así que se almacena como "long", y
+al dividirlo Python 2 sigue devolviendo un long, aunque el resultado quepa en un int, así
+que la búsqueda del último factor se hace con aritmética de long, más lenta.  El sufijo L
+de las pruebas de la versión 1.3 (7683479L) lo confirma.  No se ha podido comprobar con
+Python 2, porque ya no está instalado.  Con Python 3 este efecto desaparece.
+
+Las tablas de tiempos de las versiones anteriores se obtuvieron con Python 2 en una
+Raspberry Pi y no se han vuelto a medir.
+
+
+#### Problemas detectados en la versión 3.0.1 (no corregidos)
+
+1. **AVISO DE SEGURIDAD: ejecución remota de código.**  El servidor de red escucha en el
+   puerto 8000 en **todas** las interfaces y deserializa con `pickle.loads()` los
+   mensajes de los clientes.  En esta versión lo hace con más mensajes que en la 3.0
+   (`REQUEST JOB`, `SEND RESULTS` y `CLIENT TIMEOUT`), y antes de comprobar si el cliente
+   está registrado.  Deserializar con pickle datos que no son de confianza permite
+   ejecutar código arbitrario, así que cualquiera que pueda conectar con el puerto 8000
+   mientras el servidor está activo puede ejecutar órdenes con los permisos del usuario
+   que ejecuta `PrimeFactor.py` (o dentro del contenedor del servidor).  El cliente
+   también deserializa con pickle lo que le envía el servidor.  **No se debe ejecutar en
+   una red en la que no se confíe**, ni publicar el puerto 8000 del contenedor.  Las
+   soluciones serían escuchar solo en una interfaz de confianza y sustituir pickle por un
+   formato como JSON.
+
+2. **Con el tiempo de espera por defecto (10 segundos) los clientes se van sin hacer
+   nada.**  El proceso principal solo atiende las peticiones de los clientes cuando
+   termina uno de sus propios procesos de factorización, lo que tarda más de 10 segundos.
+   Cuando vence el tiempo de espera el cliente envía `CLIENT TIMEOUT` y cierra la
+   conexión, y al cerrarla sin tener trabajo asignado detiene el programa.  En las
+   pruebas con la versión 3.0.1 los 2 clientes terminaron a los 10 segundos sin haber
+   hecho ningún trabajo.  Con `-t 60` los clientes funcionan correctamente.
+
+3. **No hay tiempo de espera para el ACK** (el propio registro de cambios de la versión
+   3.0.1 lo indica como pendiente).
+
+4. **Los resultados de los clientes se aceptan sin comprobarlos**: un cliente que informe
+   de que un segmento no tiene factores cuando sí los tiene puede producir un resultado
+   incorrecto, y si se devuelve un único factor la validación final no se hace.
+
+5. **Trabajo de los clientes desaprovechado**: cuando no quedan segmentos nuevos, los
+   procesos locales recuperan los segmentos asignados a los clientes, y si después el
+   cliente devuelve su resultado se descarta.
+
+6. **Los factores encontrados por los clientes no se tratan como los locales**: no
+   detienen la búsqueda ni se vuelven a factorizar.
+
+7. **El protocolo envía pickle dentro de líneas de texto**: los bytes de fin de línea
+   (`\r\n`) que pueda contener un pickle partirían el mensaje.  No ha ocurrido en las
+   pruebas.
+
+8. **`NetJob` usa una lista como valor por defecto** (`results=[]`), que es la misma lista
+   para todos los objetos creados sin resultados.  Ahora no causa problemas porque los
+   resultados siempre se sustituyen, nunca se añaden a esa lista.
+
+9. **Problemas que vienen de las versiones 2.4 y 3.0**: los factores encontrados cuando ya
+   se han lanzado todos los segmentos no se vuelven a factorizar; el límite `top` no se
+   reinicia entre números; la opción -c solo se aplica al primer número; la fase 1 dura
+   10 segundos fijos; los ejemplos de -c y -l terminan con "is not prime"; CTRL-C no sale
+   con el código 3; la opción -l se ignora en la fase general; `join(0.08)`; el error de
+   `f_out.close()`; `factorize_with_factors` no comprueba si se ha quedado sin
+   candidatos; y los mensajes de error del cliente con dos `%s` y un solo valor.
+
+
+#### Pruebas de la factorización en red
+
+Para no exponer el puerto 8000, las pruebas en red se hicieron en contenedores, con las
+imágenes construidas con los nuevos Dockerfile, en una red de contenedores privada y sin
+publicar ningún puerto en el equipo.  El servidor escuchaba en todas las interfaces de su
+contenedor (sin cambios en el código) y los clientes se conectaban desde sus propios
+contenedores por el nombre del servidor.  Para que el tiempo estimado superara los 70
+segundos y se arrancara el servidor de red, el servidor se ejecutó con 2 procesos locales
+(sustituyendo `multiprocessing.cpu_count` al lanzarlo, sin modificar la imagen), con el
+primo del nivel 19 y 2 clientes con `-t 60`:
+
+```
+5977455832169755667, 2 procesos locales y 2 clientes (-t 60)       203,0 s
+```
+
+El resultado fue correcto; los 2 clientes se registraron desde sus direcciones
+(10.89.0.3 y 10.89.0.4), procesaron 10 segmentos, el servidor aceptó 9 resultados (el
+último ACK no llegó porque la factorización ya había terminado), no hubo caducidades ni
+errores, y los dos clientes terminaron solos al cerrarse el servidor.
+
+Como se explica en la versión 3.0-python3, la variación de tiempos entre ejecuciones
+idénticas en este PC es de hasta un 30%, así que estas pocas ejecuciones no permiten medir
+cuánto aceleran los clientes la factorización.
+
+
+#### Informe de validación de la migración
+
+Todas las pruebas se han hecho en un PC actual con 12 CPUs.
+
++ En el PC, sin gmpy2 (función alternativa `is_prime`) y con Twisted 25.5.0:
+  + `--runtest testcases.dat` (1837 casos, 129 segundos) y `--runtest testcases10.dat`
+    (1050 casos, 75 segundos), todos superados, sin errores.
+  + Factorizaciones sueltas: 30 = [2, 3, 5], 98 = [2, 7, 7], 1690 = [2, 5, 13, 13],
+    5577944 = [2, 2, 2, 19, 36697] y 3644792236778694 = [2, 3, 101, 42473, 141607813].
+  + Opción -c: termina con el mensaje de factor no primo y el código -1, igual que en la
+    versión original.
+  + Errores de la línea de comandos: un número negativo, "-c 1" y "-l 1" se rechazan con
+    los mismos códigos de salida que antes (-4, -5 y -6).
+  + CTRL-C: muestra el tiempo usado y termina por la señal, como en la versión original.
+  + `--addtest`: añade un caso nuevo y rechaza uno repetido con código de salida 2, sobre
+    una copia de testcases.dat.
+  + `MultiPCond_test.py` se ejecuta completo hasta el mensaje "The End".
++ En los contenedores (Python 3.12.14, Twisted 26.4.0, gmpy2 2.3.2, usuario 1001):
+  + Las dos imágenes se construyen correctamente.
+  + Factorizaciones sueltas con los mismos resultados que en el PC, y la opción -c con el
+    mismo mensaje y código de salida (ahora con `gmpy2.is_prime`).
+  + `--runtest testcases.dat` montando el fichero en el contenedor: 1837 casos, todos
+    superados (124 segundos).
+  + Factorización en red: ver el apartado anterior.
++ Al terminar no quedaba ningún proceso, contenedor, red de contenedores ni puerto
+  8000/8010 abierto.
+
+
+#### Pendiente
+
++ TODO.txt todavía enlaza a la documentación de argparse de Python 2
+  (https://docs.python.org/2/howto/argparse.html); la referencia correcta para Python 3
+  es https://docs.python.org/3/howto/argparse.html
++ Los problemas descritos en "Problemas detectados en la versión 3.0.1", que no se han
+  corregido en esta migración.  El más urgente es el punto 1 (seguridad).
 
 

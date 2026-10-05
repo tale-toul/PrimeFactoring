@@ -1,4 +1,4 @@
-import md5
+import hashlib #The md5 module does not exist in python 3
 import datetime
 
 class NetJob:
@@ -16,7 +16,7 @@ class NetJob:
         self.num=num 
         self.segment=segment 
         self.results=results 
-        self.job_ID=md5.new(str(self.worker_ID) + str(datetime.datetime.now())).hexdigest()
+        self.job_ID=hashlib.md5((str(self.worker_ID) + str(datetime.datetime.now())).encode()).hexdigest()
         self.job_type_dict={'request': 'REQUEST',
                             'response': 'RESPONSE',
                             'result': 'RESULT',

@@ -1,14 +1,10 @@
-FROM python:2.7
-MAINTAINER Tale Toul <tale.toul@gmail.com>
-ENV USR pinton
-ENV AP /home/$USR/PrimeFactor/
-ENV PYTHONPATH=$PYTHONPATH:/usr/lib/python2.7/dist-packages
-RUN apt-get -y update && apt install -y \
-    python-gmpy2 \
-    python-twisted
-RUN adduser --disabled-password --gecos "$USR" $USR && \
-    echo "export PYTHONPATH='\$PYTHONPATH:/usr/lib/python2.7/dist-packages'" >> /home/$USR/.bashrc
-USER $USR
+#Image for the prime factoring server (PrimeFactor.py), based on Red Hat UBI 9 with python 3.12
+#The base image already runs as a non root user (UID 1001) inside a python virtual environment
+FROM registry.access.redhat.com/ubi9/python-312
+LABEL maintainer="Tale Toul <tale.toul@gmail.com>"
+ENV AP=/opt/app-root/src/PrimeFactor/
+#Twisted is required; gmpy2 is optional (PrimeFactor.py falls back to a pure python primality test)
+RUN pip install --no-cache-dir Twisted gmpy2
 COPY *.py $AP
 WORKDIR $AP
 ENTRYPOINT ["./PrimeFactor.py"]
