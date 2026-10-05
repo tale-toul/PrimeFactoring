@@ -2080,20 +2080,41 @@ usaron 2 procesos locales de factorización, para que el tiempo estimado superar
 segundos y se arrancara el servidor de red, y el primo del nivel 19:
 
 ```
-5977455832169755667, 2 procesos locales, sin clientes     268,6 s  (antes de la migración)
-5977455832169755667, 2 procesos locales y 2 clientes      199,8 s  (antes de la migración)
-5977455832169755667, 2 procesos locales y 2 clientes      206,2 s  (versión migrada)
-5977455832169755667, 2 procesos locales y 2 clientes      219,5 s  (versión migrada)
+5977455832169755667, 2 procesos locales, sin clientes          268,6 s  (antes de la migración)
+5977455832169755667, 2 procesos locales y 2 clientes           199,8 s  (antes de la migración)
+5977455832169755667, 2 procesos locales y 2 clientes           206,2 s  (versión migrada)
+5977455832169755667, 2 procesos locales y 2 clientes           219,5 s  (versión migrada)
+
+Medidas posteriores con la versión 3.0.1 (misma lógica de factorización local):
+5977455832169755667, 2 procesos locales, sin clientes          265,2 s
+5977455832169755667, 2 procesos locales, sin clientes          273,5 s
+5977455832169755667, 2 procesos locales, clientes que no
+                     llegaron a hacer ningún trabajo           207,5 s
+5977455832169755667, 2 procesos locales y 2 clientes           201,0 s
 ```
 
 Las medidas "antes de la migración" se hicieron con una copia temporal con los mismos
-cambios mínimos para Python 3.  Con 2 clientes la factorización es entre un 18 y un 26%
-más rápida, lejos de lo que permitiría duplicar los procesos que buscan factores, por los
-problemas 3, 4 y 5.  En todas las pruebas el resultado fue correcto, los clientes
-registraron, recibieron segmentos, los factorizaron y devolvieron los resultados (entre 5
-y 8 resultados aceptados por ejecución), y el servidor de red se cerró al terminar.  Con
-el número de dos primos del nivel 19 (2537675226119470571) y 2 clientes, el resultado
-también fue correcto (85,7 y 94,6 segundos).
+cambios mínimos para Python 3.  En todas las pruebas el resultado fue correcto, los
+clientes registraron, recibieron segmentos, los factorizaron y devolvieron los resultados
+(entre 5 y 8 resultados aceptados por ejecución), y el servidor de red se cerró al
+terminar.  Con el número de dos primos del nivel 19 (2537675226119470571) y 2 clientes, el
+resultado también fue correcto (85,7 y 94,6 segundos).
+
+**Estas medidas no permiten afirmar que los clientes aceleren la factorización.**  En
+una primera versión de este apartado se decía que con 2 clientes la factorización era
+entre un 18 y un 26% más rápida, comparando las ejecuciones con clientes con una única
+ejecución sin clientes.  Las medidas posteriores lo desmienten: en una ejecución en la
+que los 2 clientes se desconectaron sin hacer ningún trabajo, por lo que los 30
+segmentos se procesaron en local exactamente igual que sin clientes, la factorización
+tardó 207,5 segundos, lo mismo que las ejecuciones en las que los clientes sí trabajaron
+(entre 199,8 y 219,5 segundos), mientras que las otras ejecuciones sin clientes tardaron
+entre 265 y 274 segundos.  Es decir, la variación entre ejecuciones idénticas en este PC
+(hasta un 30%) es del mismo orden que la diferencia atribuida a los clientes, así que con
+estas pocas ejecuciones no se puede separar la aportación de los clientes del ruido de
+la medida.  Para medirla habría que repetir varias veces cada configuración, en un equipo
+sin otra carga y con los clientes en otros equipos.  En cualquier caso, los problemas 3, 4
+y 5 (peticiones que caducan, trabajo desaprovechado y esperas entre trabajos) limitan lo
+que pueden aportar los clientes.
 
 
 #### Informe de validación de la migración
